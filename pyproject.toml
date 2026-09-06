@@ -1,0 +1,34 @@
+[project]
+name = "wepaper"
+version = "0.1.0"
+description = "Personal Zotero paper library on the web"
+readme = "README.md"
+authors = [
+    { name = "rainhuang0220", email = "iamrainhuang@163.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "httpx>=0.28",
+    "pydantic-settings>=2.6",
+    "typer>=0.15",
+    "python-multipart>=0.0.20",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+]
+
+[project.scripts]
+wepaper = "wepaper.cli:app"
+
+[build-system]
+requires = ["uv_build>=0.10.0,<0.11.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]

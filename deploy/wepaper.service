@@ -1,0 +1,17 @@
+[Unit]
+Description=wePaper public library
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/wepaper
+EnvironmentFile=/home/ubuntu/wepaper/.env
+ExecStart=/home/ubuntu/wepaper/.venv/bin/uvicorn wepaper.server:create_app --factory --host 127.0.0.1 --port 8788
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

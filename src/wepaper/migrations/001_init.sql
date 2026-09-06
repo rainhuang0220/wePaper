@@ -1,0 +1,2 @@
+-- Applied by wepaper.db.migrate as schema_migrations.id = 001_init
+-- See src/wepaper/db.py SCHEMA_V1 for the live definition.
