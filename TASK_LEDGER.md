@@ -29,21 +29,20 @@ MISSION: wePaper V1.2 performance / fidelity / release
 - [x] Verify 0ee7e3d
 - [x] Secret/privacy scan
 - [x] License audit
-- [ ] Create dedicated GitHub repo
-- [ ] Push real main history
-- [ ] Verify public commit URLs
-- [ ] Create v1.2.0 tag
-- [ ] Create GitHub Release
-- [ ] Verify production == release commit
-- [ ] Spawn final adversarial reviewer
-- [ ] Fix HIGH/MEDIUM findings
+- [x] Create dedicated GitHub repo
+- [x] Push real main history
+- [x] Verify public commit URLs
+- [x] Create v1.2.0 tag
+- [x] Create GitHub Release
+- [x] Verify production == release commit
+- [x] Spawn final adversarial reviewer
+- [x] Fix HIGH/MEDIUM findings
 - [x] Final production benchmark
-- [ ] Public E2E
+- [x] Public E2E
 
 ## Notes
 
 - Started V1.2: 2026-09-07
 - Canonical URL: https://wepaper.plainlist.space
-- 10s cause: full-file PDF.js stream + nginx `proxy_cache` poisoning Range 206 + uncompressed worker/JS
-- Small-paper cold click P50 ~360 ms / P95 ~845 ms
-- Medium/large still path-bound on serial Range from this Mac
+- Repo: https://github.com/rainhuang0220/wePaper
+- Adversarial review HIGH/MEDIUM fixed in v1.2.1: linearized serve copies + Range-only first page, 304, Cache API warm, 32M canvas cap, isolated P50/P95 asserts

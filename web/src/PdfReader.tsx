@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import * as pdfjs from "pdfjs-dist";
 import { backingStore } from "./canvasScale";
 import { findPageHits, nextHit, prevHit } from "./findHits";
-import { loadPdf } from "./pdfLoader";
+import { loadPdf, persistPdf } from "./pdfLoader";
 import { pageWindow } from "./pdfWindow";
 import { nextZoom } from "./zoomSteps";
 
@@ -65,6 +65,7 @@ export function PdfReader({ url }: Props) {
         setPdf(doc);
         setPageCount(doc.numPages);
         setStatus("");
+        void persistPdf(url, doc);
         const hash = window.location.hash.match(/page=(\d+)/i);
         if (hash) setCurrent(Math.min(doc.numPages, Math.max(1, Number(hash[1]))));
       })

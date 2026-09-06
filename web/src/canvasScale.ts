@@ -1,4 +1,4 @@
-export const MAX_CANVAS_PIXELS = 16_777_216;
+export const MAX_CANVAS_PIXELS = 32_000_000;
 export const MAX_DPR = 3;
 
 export function outputScale(cssWidth: number, cssHeight: number, dpr: number): number {

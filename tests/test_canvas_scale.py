@@ -1,6 +1,6 @@
 """Keep in lockstep with web/src/canvasScale.ts and web/src/zoomSteps.ts."""
 
-MAX_CANVAS_PIXELS = 16_777_216
+MAX_CANVAS_PIXELS = 32_000_000
 MAX_DPR = 3
 ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4]
 
@@ -39,6 +39,12 @@ def test_backing_is_dpr_times_css() -> None:
 def test_huge_zoom_clamps_pixels() -> None:
     ratio = output_scale(2500, 3500, 3)
     assert ratio * 2500 * ratio * 3500 <= MAX_CANVAS_PIXELS + 1
+
+
+def test_mobile_300_is_sharper_than_200() -> None:
+    at200 = output_scale(1224, 1584, 3)
+    at300 = output_scale(1836, 2376, 3)
+    assert int(1836 * at300) > int(1224 * at200)
 
 
 def test_zoom_ladder() -> None:

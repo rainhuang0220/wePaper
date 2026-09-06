@@ -154,8 +154,11 @@ def test_upload_pdf_and_range(tmp_path: Path) -> None:
     head = client.head("/paper/C8TQ6QR5/pdf")
     assert head.status_code == 200
     assert head.headers["content-type"].startswith("application/pdf")
-    assert int(head.headers["content-length"]) == len(MINIMAL_PDF)
+    assert int(head.headers["content-length"]) == len(alias.content)
     assert head.headers.get("accept-ranges") == "bytes"
+    etag = alias.headers["etag"]
+    cached = client.get("/paper/C8TQ6QR5/pdf", headers={"If-None-Match": etag})
+    assert cached.status_code == 304
     public = client.get("/api/v1/papers/C8TQ6QR5").json()
     assert all("checksum" not in att for att in public["attachments"])
     assert all("zotero_attachment_key" not in att for att in public["attachments"])

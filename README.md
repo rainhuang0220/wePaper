@@ -4,6 +4,8 @@ A personal Zotero paper library on the web.
 
 **Public library:** https://wepaper.plainlist.space
 
+**Source:** https://github.com/rainhuang0220/wePaper
+
 Put papers in a Zotero collection. A local agent copies metadata and PDFs to a small server. Anyone with the URL can browse the list and read the PDF. There is no visitor login. Uploads require a secret.
 
 ```

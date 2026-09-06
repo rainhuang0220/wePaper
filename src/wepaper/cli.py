@@ -72,6 +72,17 @@ def status() -> None:
 
 
 @app.command()
+def linearize() -> None:
+    """Write linearized serve copies of stored PDFs. Does not change sync checksums."""
+    from wepaper.linearize import linearize_blob_tree
+    from wepaper.settings import Settings
+
+    _setup_logging()
+    count = linearize_blob_tree(Settings())
+    typer.echo(f"linearized {count}")
+
+
+@app.command()
 def install_agent(plist: Optional[str] = None) -> None:
     from wepaper.launchd import install_launch_agent
 

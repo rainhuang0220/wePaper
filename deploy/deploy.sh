@@ -25,8 +25,8 @@ if ! command -v uv >/dev/null; then
 fi
 if [ ! -x .venv/bin/python ]; then
   uv python install 3.12 >/dev/null
-  uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 fi
+uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 sudo mkdir -p /var/lib/wepaper
 sudo chown ubuntu:ubuntu /var/lib/wepaper
 sudo chmod 700 /var/lib/wepaper
@@ -53,6 +53,11 @@ sudo systemctl restart wepaper
 sleep 2
 curl -fsS http://127.0.0.1:8788/api/v1/health
 echo
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+uv run wepaper linearize
 REMOTE
 
 echo "deployed to $HOST:$REMOTE"

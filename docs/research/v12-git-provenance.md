@@ -113,3 +113,15 @@ gh repo view rainhuang0220/wePaper
 ```
 
 Additional checks: `git branch -vv`, `git reflog show --all`, local `npm run build`, SHA-256 compare of production vs local `web/dist/`, `curl` of production `/` and `/api/v1/health`.
+
+---
+
+## Update (2026-09-07, after publication)
+
+The tree above was the pre-push snapshot. The dedicated public repository now exists and contains this history:
+
+- https://github.com/rainhuang0220/wePaper
+- `42cf3a6`: https://github.com/rainhuang0220/wePaper/commit/42cf3a6020a22d8aa27cadca2e1f4ef5c2a6e932
+- `0ee7e3d`: https://github.com/rainhuang0220/wePaper/commit/0ee7e3dce9c44fe2d7d61d0ce8614700d573b0bb
+- `v1.2.0`: https://github.com/rainhuang0220/wePaper/releases/tag/v1.2.0
+

@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from wepaper.checksum import sha256_bytes, verify_checksum
 from wepaper.db import connect, migrate, utcnow
+from wepaper.linearize import ensure_linearized, linearized_path
 from wepaper.sanitize import safe_storage_name, sanitize_filename
 from wepaper.settings import Settings
 
@@ -183,7 +184,7 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="pdf missing")
         return att, path
 
-    def _pdf_headers(att: sqlite3.Row, path: Path) -> dict[str, str]:
+    def _pdf_headers(att: sqlite3.Row) -> dict[str, str]:
         return {
             "Cache-Control": "private, max-age=3600",
             "X-Content-Type-Options": "nosniff",
@@ -192,10 +193,19 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
             "Content-Disposition": f'inline; filename="{sanitize_filename(att["filename"])}"',
         }
 
+    def _serve_pdf(att: sqlite3.Row, path: Path) -> Path:
+        derived = ensure_linearized(path, linearized_path(settings, att["storage_key"]))
+        return derived or path
+
     @app.api_route("/api/v1/papers/{item_key}/pdf", methods=["GET", "HEAD"], response_model=None)
     def get_pdf(item_key: str, request: Request) -> FileResponse | Response:
         att, path = _pdf_file(item_key)
-        headers = _pdf_headers(att, path)
+        headers = _pdf_headers(att)
+        etag = headers["ETag"]
+        matched = request.headers.get("if-none-match", "").strip()
+        if matched in {etag, f"W/{etag}"}:
+            return Response(status_code=304, headers={"ETag": etag, "Cache-Control": headers["Cache-Control"]})
+        path = _serve_pdf(att, path)
         if request.method == "HEAD":
             headers["Content-Length"] = str(path.stat().st_size)
             return Response(status_code=200, media_type="application/pdf", headers=headers)
@@ -307,6 +317,7 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
             tmp = dest.with_name(dest.name + ".partial")
             tmp.write_bytes(data)
             tmp.replace(dest)
+        ensure_linearized(dest, linearized_path(settings, storage_key))
         conn.execute(
             """
             INSERT INTO attachments(
