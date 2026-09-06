@@ -8,6 +8,10 @@ export default defineConfig({
     port: 5178,
     proxy: {
       "/api": "http://127.0.0.1:8788",
+      "/wepaper/api": {
+        target: "http://127.0.0.1:8788",
+        rewrite: (path) => path.replace(/^\/wepaper/, ""),
+      },
     },
   },
   build: {

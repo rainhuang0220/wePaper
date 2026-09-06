@@ -29,6 +29,7 @@ if [ ! -x .venv/bin/python ]; then
 fi
 sudo mkdir -p /var/lib/wepaper
 sudo chown ubuntu:ubuntu /var/lib/wepaper
+sudo chmod 700 /var/lib/wepaper
 if [ ! -f .env ]; then
   umask 077
   {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import html
 import os
 import shutil
 import subprocess
@@ -34,8 +35,8 @@ def write_agent_env() -> Path:
 
 def install_launch_agent(destination: str | None = None) -> None:
     repo_bin = Path(__file__).resolve().parents[2] / ".venv" / "bin" / "wepaper"
-    wepaper = shutil.which("wepaper") or (str(repo_bin) if repo_bin.is_file() else "wepaper")
-    env_path = write_agent_env()
+    wepaper = html.escape(shutil.which("wepaper") or (str(repo_bin) if repo_bin.is_file() else "wepaper"))
+    env_path = html.escape(str(write_agent_env()))
     dest = Path(destination or Path.home() / "Library" / "LaunchAgents" / PLIST_NAME)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(
@@ -56,6 +57,7 @@ def install_launch_agent(destination: str | None = None) -> None:
 </plist>
 """
     )
+    dest.chmod(0o600)
     subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}/space.plainlist.wepaper"], check=False)
     subprocess.run(["launchctl", "bootstrap", f"gui/{os.getuid()}", str(dest)], check=False)
     print(f"Installed {dest}")

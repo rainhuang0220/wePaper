@@ -44,15 +44,15 @@ def valid_item_key(key: str) -> str:
 class PaperIn(BaseModel):
     zotero_item_key: str = Field(min_length=8, max_length=8, pattern=r"^[A-Za-z0-9]{8}$")
     title: str = Field(min_length=1, max_length=2000)
-    authors: str = ""
+    authors: str = Field(default="", max_length=4000)
     year: int | None = None
-    venue: str | None = None
-    doi: str | None = None
-    abstract: str | None = None
-    tags: list[str] = Field(default_factory=list)
-    collection: str = ""
-    date_added: str | None = None
-    date_modified: str | None = None
+    venue: str | None = Field(default=None, max_length=500)
+    doi: str | None = Field(default=None, max_length=200)
+    abstract: str | None = Field(default=None, max_length=20000)
+    tags: list[str] = Field(default_factory=list, max_length=32)
+    collection: str = Field(default="", max_length=200)
+    date_added: str | None = Field(default=None, max_length=40)
+    date_modified: str | None = Field(default=None, max_length=40)
     visibility: str = "public"
     zotero_version: int = 0
 
@@ -64,8 +64,13 @@ class SyncStateIn(BaseModel):
 
 def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
     settings = load_settings(overrides)
-    settings.data_dir.mkdir(parents=True, exist_ok=True)
-    settings.blob_dir.mkdir(parents=True, exist_ok=True)
+    settings.data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    settings.blob_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    for locked in (settings.data_dir, settings.blob_dir):
+        try:
+            locked.chmod(0o700)
+        except OSError:
+            pass
     conn = connect(settings.db_path)
     migrate(conn)
 
@@ -74,7 +79,14 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         yield
         conn.close()
 
-    app = FastAPI(title="wePaper", version="0.1.0", lifespan=lifespan, docs_url=None, redoc_url=None)
+    app = FastAPI(
+        title="wePaper",
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.public_url],
@@ -234,6 +246,7 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
 
     @app.put("/api/v1/sync/attachments/{attachment_key}")
     async def upsert_attachment(
+        request: Request,
         attachment_key: str,
         file: UploadFile = File(...),
         x_wepaper_item_key: str = Header(),
@@ -246,9 +259,20 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         paper = conn.execute("SELECT 1 FROM papers WHERE zotero_item_key = ?", (paper_key,)).fetchone()
         if paper is None:
             raise HTTPException(status_code=404, detail="paper not found")
-        data = await file.read()
-        if len(data) > settings.max_upload_bytes:
+        declared = request.headers.get("content-length")
+        if declared and declared.isdigit() and int(declared) > settings.max_upload_bytes + 65536:
             raise HTTPException(status_code=413, detail="file too large")
+        chunks: list[bytes] = []
+        received = 0
+        while True:
+            chunk = await file.read(65536)
+            if not chunk:
+                break
+            received += len(chunk)
+            if received > settings.max_upload_bytes:
+                raise HTTPException(status_code=413, detail="file too large")
+            chunks.append(chunk)
+        data = b"".join(chunks)
         if not data.startswith(PDF_MAGIC):
             raise HTTPException(status_code=415, detail="not a pdf")
         filename = sanitize_filename(x_wepaper_filename or file.filename or "paper.pdf")
@@ -333,7 +357,13 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "same-origin")
-        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; worker-src 'self' blob:; "
+            "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+        )
         if request.url.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
         return response
@@ -345,7 +375,9 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
 
         @app.get("/{full_path:path}")
         def spa(full_path: str):
-            if full_path.startswith("api/"):
+            if full_path.startswith("wepaper/"):
+                full_path = full_path[8:]
+            if full_path.startswith("api/") or full_path in {"openapi.json", "docs", "redoc"}:
                 raise HTTPException(status_code=404, detail="not found")
             candidate = (settings.web_dir / full_path).resolve()
             try:
@@ -368,12 +400,19 @@ def _public_key(key: str) -> str:
     return key
 
 
+BLOB_KEY = re.compile(r"^[0-9a-f]{64}\.pdf$")
+
+
 def _blob_path(settings: Settings, storage_key: str) -> Path:
-    name = Path(storage_key).name
-    if "/" in storage_key or "\\" in storage_key or name != storage_key:
+    if not BLOB_KEY.fullmatch(storage_key or ""):
         raise HTTPException(status_code=400, detail="bad storage key")
-    digest = Path(name).stem
-    return settings.blob_dir / digest[:2] / digest[2:4] / name
+    root = settings.blob_dir.resolve()
+    path = (root / storage_key[:2] / storage_key[2:4] / storage_key).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="bad storage key") from None
+    return path
 
 
 def _paper_json(
@@ -396,7 +435,11 @@ def _paper_json(
         "date_added": row["date_added"] or row["created_at"],
         "visibility": row["visibility"],
         "has_pdf": bool(atts),
-        "attachments": [dict(att) for att in atts],
+        "attachments": (
+            [dict(att) for att in atts]
+            if include_hidden
+            else [{"filename": att["filename"], "size": att["size"]} for att in atts]
+        ),
     }
     if include_abstract:
         payload["abstract"] = row["abstract"]

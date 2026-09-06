@@ -12,6 +12,10 @@ ExecStart=/home/ubuntu/wepaper/.venv/bin/uvicorn wepaper.server:create_app --fac
 Restart=always
 RestartSec=3
 NoNewPrivileges=true
+UMask=0077
+ProtectSystem=full
+PrivateTmp=true
+ReadWritePaths=/var/lib/wepaper
 
 [Install]
 WantedBy=multi-user.target

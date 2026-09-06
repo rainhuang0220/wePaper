@@ -1,8 +1,11 @@
 from pathlib import Path
 
+import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from wepaper.server import create_app
+from wepaper.server import _blob_path, create_app
+from wepaper.settings import Settings
 
 
 MINIMAL_PDF = b"""%PDF-1.1
@@ -50,10 +53,29 @@ def test_empty_library(tmp_path: Path) -> None:
     assert res.json()["papers"] == []
 
 
+def test_openapi_is_disabled(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    assert client.get("/openapi.json").status_code == 404
+
+
+def test_blob_path_rejects_escape(tmp_path: Path) -> None:
+    settings = Settings(data_dir=tmp_path)
+    settings.blob_dir.mkdir(parents=True, exist_ok=True)
+    with pytest.raises(HTTPException):
+        _blob_path(settings, "....pdf")
+    with pytest.raises(HTTPException):
+        _blob_path(settings, "../../../etc/passwd")
+    key = "ab" * 32 + ".pdf"
+    path = _blob_path(settings, key)
+    assert path.resolve().is_relative_to(settings.blob_dir.resolve())
+
+
 def test_write_requires_token(tmp_path: Path) -> None:
     client = make_client(tmp_path)
     assert client.put("/api/v1/sync/papers", json={"zotero_item_key": "ABC12345", "title": "x"}).status_code == 401
     assert client.delete("/api/v1/sync/papers/ABC12345").status_code == 401
+    assert client.get("/api/v1/sync/papers").status_code == 401
+    assert client.get("/api/v1/sync/state").status_code == 401
 
 
 def test_wrong_token_rejected(tmp_path: Path) -> None:
@@ -122,6 +144,9 @@ def test_upload_pdf_and_range(tmp_path: Path) -> None:
     first = client.get("/api/v1/papers/C8TQ6QR5/pdf")
     assert first.status_code == 200
     assert first.content.startswith(b"%PDF")
+    public = client.get("/api/v1/papers/C8TQ6QR5").json()
+    assert all("checksum" not in att for att in public["attachments"])
+    assert all("zotero_attachment_key" not in att for att in public["attachments"])
     ranged = client.get("/api/v1/papers/C8TQ6QR5/pdf", headers={"Range": "bytes=0-3"})
     assert ranged.status_code == 206
     assert ranged.content == b"%PDF"
@@ -139,6 +164,25 @@ def test_duplicate_upload_is_idempotent(tmp_path: Path) -> None:
         assert res.status_code in {200, 201}
     blobs = list((tmp_path / "blobs").rglob("*.pdf"))
     assert len(blobs) == 1
+
+
+def test_rejects_oversize_pdf(tmp_path: Path) -> None:
+    app = create_app(
+        {
+            "WEPAPER_DATA_DIR": str(tmp_path),
+            "WEPAPER_SYNC_TOKEN": "secret-token",
+            "WEPAPER_MAX_UPLOAD_BYTES": "20",
+        }
+    )
+    client = TestClient(app)
+    _ingest_paper(client)
+    fat = b"%PDF-1.1\n" + b"x" * 80
+    res = client.put(
+        "/api/v1/sync/attachments/LCYIEFND",
+        headers={**auth(), "X-Wepaper-Item-Key": "C8TQ6QR5", "X-Wepaper-Filename": "paper.pdf"},
+        files={"file": ("paper.pdf", fat, "application/pdf")},
+    )
+    assert res.status_code == 413
 
 
 def test_reject_non_pdf_and_path_id(tmp_path: Path) -> None:

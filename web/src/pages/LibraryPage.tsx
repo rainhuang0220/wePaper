@@ -6,10 +6,13 @@ function publicTags(tags: string[]): string[] {
   return tags.filter((tag) => !tag.startsWith("/") && !/^#?wepaper:/.test(tag.toLowerCase()));
 }
 
-function addedLabel(value: string | null): string {
+function addedLabel(value: string | null, year: number | null): string {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value.slice(0, 10);
+  if (year && date.getFullYear() === year) {
+    return date.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
+  }
   return date.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" });
 }
 
@@ -58,15 +61,15 @@ export function LibraryPage() {
     <main className="shell">
       <header className="masthead">
         <div>
-          <p className="wordmark">
+          <h1 className="wordmark">
             we<em>Paper</em>
-          </p>
+          </h1>
           <p className="lede">A quiet reading room for the papers kept in one Zotero collection.</p>
         </div>
         <div className="tools">
           <input
             type="search"
-            placeholder="Search title, author, venue"
+            placeholder="Search title, author, venue…"
             value={query}
             onChange={(event) => updateParams({ q: event.target.value })}
             aria-label="Search papers"
@@ -79,11 +82,14 @@ export function LibraryPage() {
         </div>
       </header>
       <p className="census">{census}</p>
-      {error ? <p className="status">{error}</p> : null}
-      {!loading && papers.length === 0 ? (
+      {error ? (
+        <p className="status" role="alert">
+          {error}
+        </p>
+      ) : !loading && papers.length === 0 ? (
         <div className="empty">
-          <h2>The shelf is empty</h2>
-          <p>Nothing has been published to this library yet.</p>
+          <h2>{query ? "Nothing matches" : "The shelf is empty"}</h2>
+          <p>{query ? "Try a title, author, or venue." : "Nothing has been published to this library yet."}</p>
         </div>
       ) : (
         <ol className="catalog">
@@ -93,7 +99,9 @@ export function LibraryPage() {
                 <h2 className="title">{paper.title}</h2>
                 <p className="byline">{paper.authors || "Unknown authors"}</p>
                 <p className="meta">
-                  {[paper.year, paper.venue, addedLabel(paper.date_added)].filter(Boolean).join(" · ")}
+                  {[paper.year, paper.venue, addedLabel(paper.date_added, paper.year), paper.has_pdf ? "PDF" : "Metadata only"]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 {publicTags(paper.tags).length ? (
                   <div className="chips">

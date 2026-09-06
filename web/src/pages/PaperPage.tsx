@@ -3,16 +3,34 @@ import { Link, useParams } from "react-router-dom";
 import { fetchPaper, pdfUrl, type Paper } from "../api";
 import { PdfReader } from "../PdfReader";
 
+function shortAuthors(authors: string): string {
+  const names = authors.split(",").map((part) => part.trim()).filter(Boolean);
+  if (names.length <= 3) return names.join(", ");
+  return `${names.slice(0, 3).join(", ")} et al.`;
+}
+
 export function PaperPage() {
   const { id = "" } = useParams();
   const [paper, setPaper] = useState<Paper | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setPaper(null);
+    setError("");
     fetchPaper(id)
-      .then(setPaper)
+      .then((next) => {
+        setError("");
+        setPaper(next);
+      })
       .catch((err: Error) => setError(err.message));
   }, [id]);
+
+  useEffect(() => {
+    document.title = paper ? `${paper.title} · wePaper` : "wePaper";
+    return () => {
+      document.title = "wePaper";
+    };
+  }, [paper]);
 
   if (error) {
     return (
@@ -30,6 +48,9 @@ export function PaperPage() {
   if (!paper) {
     return (
       <main className="shell">
+        <Link className="back" to="/">
+          ← Library
+        </Link>
         <p className="status">Opening the folio…</p>
       </main>
     );
@@ -43,7 +64,7 @@ export function PaperPage() {
             ← Library
           </Link>
           <h1>{paper.title}</h1>
-          <p className="byline">{paper.authors}</p>
+          <p className="byline">{shortAuthors(paper.authors)}</p>
           <p className="meta">{[paper.year, paper.venue, paper.doi].filter(Boolean).join(" · ")}</p>
         </div>
       </header>
