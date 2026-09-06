@@ -24,6 +24,8 @@ var/
 .DS_Store
 playwright-report/
 test-results/
+web/playwright-report/
+web/test-results/
 *.pdf
 !tests/fixtures/**/*.pdf
 .idea/

@@ -144,12 +144,20 @@ def test_upload_pdf_and_range(tmp_path: Path) -> None:
     first = client.get("/api/v1/papers/C8TQ6QR5/pdf")
     assert first.status_code == 200
     assert first.content.startswith(b"%PDF")
+    alias = client.get("/paper/C8TQ6QR5/pdf")
+    assert alias.status_code == 200
+    assert alias.headers["content-type"].startswith("application/pdf")
+    assert alias.content.startswith(b"%PDF")
     public = client.get("/api/v1/papers/C8TQ6QR5").json()
     assert all("checksum" not in att for att in public["attachments"])
     assert all("zotero_attachment_key" not in att for att in public["attachments"])
     ranged = client.get("/api/v1/papers/C8TQ6QR5/pdf", headers={"Range": "bytes=0-3"})
     assert ranged.status_code == 206
     assert ranged.content == b"%PDF"
+    alias_range = client.get("/paper/C8TQ6QR5/pdf", headers={"Range": "bytes=0-3"})
+    assert alias_range.status_code == 206
+    assert alias_range.content == b"%PDF"
+    assert alias_range.headers["content-type"].startswith("application/pdf")
 
 
 def test_duplicate_upload_is_idempotent(tmp_path: Path) -> None:
@@ -236,6 +244,19 @@ def test_private_visibility_hides_pdf(tmp_path: Path) -> None:
     assert client.get("/api/v1/papers").json()["papers"] == []
     assert client.get("/api/v1/papers/PRIV0001").status_code == 404
     assert client.get("/api/v1/papers/PRIV0001/pdf").status_code == 404
+
+
+def test_security_headers_and_docs_are_closed(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    home = client.get("/")
+    csp = home.headers.get("content-security-policy", "")
+    assert "frame-ancestors 'none'" in csp
+    assert "object-src 'none'" in csp
+    assert "fonts.googleapis.com" not in csp
+    assert home.headers.get("x-frame-options") == "DENY"
+    assert client.get("/openapi.json").status_code == 404
+    assert client.get("/docs").status_code == 404
+    assert client.get("/redoc").status_code == 404
 
 
 def test_chinese_title_roundtrip(tmp_path: Path) -> None:

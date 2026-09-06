@@ -36,17 +36,15 @@ if [ ! -f .env ]; then
     echo 'WEPAPER_DATA_DIR=/var/lib/wepaper'
     echo 'WEPAPER_HOST=127.0.0.1'
     echo 'WEPAPER_PORT=8788'
-    echo 'WEPAPER_PUBLIC_URL=https://plainlist.space/wepaper'
+    echo 'WEPAPER_PUBLIC_URL=https://wepaper.plainlist.space'
     echo "WEPAPER_SYNC_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
   } > .env
   echo 'created .env'
 else
-  if grep -q 'sslip.io' .env || ! grep -q 'WEPAPER_PUBLIC_URL=' .env; then
-    grep -v '^WEPAPER_PUBLIC_URL=' .env > .env.tmp || true
-    echo 'WEPAPER_PUBLIC_URL=https://plainlist.space/wepaper' >> .env.tmp
-    mv .env.tmp .env
-    chmod 600 .env
-  fi
+  grep -v '^WEPAPER_PUBLIC_URL=' .env > .env.tmp || true
+  echo 'WEPAPER_PUBLIC_URL=https://wepaper.plainlist.space' >> .env.tmp
+  mv .env.tmp .env
+  chmod 600 .env
 fi
 sudo cp deploy/wepaper.service /etc/systemd/system/wepaper.service
 sudo systemctl daemon-reload

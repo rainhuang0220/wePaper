@@ -1,81 +1,72 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { fetchPaper, pdfUrl, type Paper } from "../api";
+import { fetchPaper, pdfUrl } from "../api";
 import { PdfReader } from "../PdfReader";
 
-function shortAuthors(authors: string): string {
-  const names = authors.split(",").map((part) => part.trim()).filter(Boolean);
-  if (names.length <= 3) return names.join(", ");
-  return `${names.slice(0, 3).join(", ")} et al.`;
+function Shell({ message }: { message: string }) {
+  return (
+    <div className="lib">
+      <header className="lib-bar">
+        <Link className="mark" to="/">
+          Library
+        </Link>
+      </header>
+      <p className="note">{message}</p>
+    </div>
+  );
 }
 
 export function PaperPage() {
   const { id = "" } = useParams();
-  const [paper, setPaper] = useState<Paper | null>(null);
+  const [title, setTitle] = useState("");
+  const [hasPdf, setHasPdf] = useState<boolean | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setPaper(null);
+    setTitle("");
+    setHasPdf(null);
     setError("");
     fetchPaper(id)
       .then((next) => {
+        setTitle(next.title);
+        setHasPdf(next.has_pdf);
         setError("");
-        setPaper(next);
       })
       .catch((err: Error) => setError(err.message));
   }, [id]);
 
   useEffect(() => {
-    document.title = paper ? `${paper.title} · wePaper` : "wePaper";
+    document.title = title ? `${title} · wePaper` : "wePaper";
     return () => {
       document.title = "wePaper";
     };
-  }, [paper]);
+  }, [title]);
 
-  if (error) {
+  if (error) return <Shell message="This paper is not available." />;
+  if (hasPdf === false) return <Shell message="No PDF attached." />;
+  if (!hasPdf) {
     return (
-      <main className="shell">
-        <Link className="back" to="/">
-          ← Library
-        </Link>
-        <div className="empty">
-          <h2>This paper is not on the shelf</h2>
-          <p>{error}</p>
+      <div className="paper-page">
+        <div className="reader">
+          <div className="reader-tools" role="toolbar" aria-label="PDF">
+            <div className="tools-left">
+              <Link className="back" to="/">
+                Library
+              </Link>
+            </div>
+            <div className="tools-center">
+              <span className="find-count">Opening</span>
+            </div>
+            <div className="tools-right" />
+          </div>
         </div>
-      </main>
-    );
-  }
-  if (!paper) {
-    return (
-      <main className="shell">
-        <Link className="back" to="/">
-          ← Library
-        </Link>
-        <p className="status">Opening the folio…</p>
-      </main>
+      </div>
     );
   }
 
   return (
     <div className="paper-page">
-      <header className="paper-bar">
-        <div>
-          <Link className="back" to="/">
-            ← Library
-          </Link>
-          <h1>{paper.title}</h1>
-          <p className="byline">{shortAuthors(paper.authors)}</p>
-          <p className="meta">{[paper.year, paper.venue, paper.doi].filter(Boolean).join(" · ")}</p>
-        </div>
-      </header>
-      {paper.has_pdf ? (
-        <PdfReader url={pdfUrl(paper.zotero_item_key)} />
-      ) : (
-        <div className="empty">
-          <h2>No PDF yet</h2>
-          <p>Metadata synced, but the attachment has not arrived.</p>
-        </div>
-      )}
+      <PdfReader url={pdfUrl(id)} />
     </div>
   );
 }

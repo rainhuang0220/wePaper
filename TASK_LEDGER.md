@@ -1,33 +1,44 @@
 # TASK_LEDGER
 
-MISSION: wePaper public production release
+MISSION: wePaper V1.1 UX / Reader reconstruction
 
-## Release
+## V1.1
 
-- [x] Research
-- [x] Zotero integration architecture
-- [x] Prior-art benchmark
-- [x] Architecture review
-- [x] Backend
-- [x] Sync agent
-- [x] Database
-- [x] PDF storage
-- [x] Frontend
-- [x] PDF viewer
-- [x] Incremental sync
-- [x] Tests
-- [x] Real Zotero smoke
-- [x] Local E2E
-- [x] Security review
-- [x] Deployment
+- [x] Load/Create long-run Skill
+- [x] Spawn frontend benchmark agent
+- [x] Spawn PDF reader investigator
+- [x] Verify current PDF architecture
+- [x] UI benchmark
+- [x] Select visual references
+- [x] Redesign library
+- [x] Rebuild reader with continuous scroll
+- [x] Verify real PDF transport
+- [x] Reader performance / lazy rendering
+- [x] Reader desktop
+- [x] Reader mobile
+- [x] Verify wepaper.plainlist.space DNS
+- [x] Configure independent origin
+- [x] HTTPS
+- [x] Migrate public app
+- [x] Update local Sync Agent endpoint
+- [x] Existing backend regression
+- [x] Real Zotero regression
+- [x] Browser E2E desktop
+- [x] Browser E2E mobile
+- [x] Visual critic
+- [x] Fix HIGH / MEDIUM UI findings
+- [x] Security regression
+- [x] Screenshot second pass
 - [x] Public E2E
 - [x] Documentation
-- [x] Final cleanup
+- [x] Final clean git state
 
 ## Notes
 
-- Started: 2026-09-06
-- Public URL: https://plainlist.space/wepaper
-- Dedicated host `wepaper.plainlist.space` is blocked by Tencent ICP/HTTP-01 until a DNS A record exists on the filed zone. Path-based HTTPS on `plainlist.space` is the shipped door.
-- First published collection: Agent Memory (9 papers). No `wePaper` collection in this Zotero library yet.
-- launchd agent: `space.plainlist.wepaper` (token in `~/.config/wepaper/agent.env` 0600)
+- Started V1.1: 2026-09-07
+- Preserve working backend and sync semantics.
+- Canonical URL: https://wepaper.plainlist.space
+- Visual refs: Zotero Web Library, Mozilla PDF.js viewer, Miniflux editorial
+- Playwright: 4 passed (desktop 1440×900, mobile 390×844) against production
+- Pytest: 46 passed
+- Sync: 9 papers UNCHANGED against the new origin

@@ -19,11 +19,14 @@ def write_agent_env() -> Path:
     token = os.environ.get("WEPAPER_SYNC_TOKEN", "")
     if path.exists() and not token:
         return path
+    def q(value: str) -> str:
+        return "'" + value.replace("'", "'\"'\"'") + "'"
+
     body = "\n".join(
         [
-            f"WEPAPER_COLLECTION={os.environ.get('WEPAPER_COLLECTION', 'wePaper')}",
-            f"WEPAPER_SERVER_URL={os.environ.get('WEPAPER_SERVER_URL', 'https://plainlist.space/wepaper')}",
-            f"WEPAPER_SYNC_TOKEN={token}",
+            f"WEPAPER_COLLECTION={q(os.environ.get('WEPAPER_COLLECTION', 'wePaper'))}",
+            f"WEPAPER_SERVER_URL={q(os.environ.get('WEPAPER_SERVER_URL', 'https://wepaper.plainlist.space'))}",
+            f"WEPAPER_SYNC_TOKEN={q(token)}",
             f"WEPAPER_POLL_SECONDS={os.environ.get('WEPAPER_POLL_SECONDS', '60')}",
             "",
         ]

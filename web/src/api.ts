@@ -32,5 +32,8 @@ export async function fetchPaper(id: string): Promise<Paper> {
 }
 
 export function pdfUrl(itemKey: string): string {
-  return `${apiRoot}/papers/${itemKey}/pdf`;
+  const base = import.meta.env.BASE_URL.endsWith("/")
+    ? import.meta.env.BASE_URL
+    : `${import.meta.env.BASE_URL}/`;
+  return `${base}paper/${itemKey}/pdf`;
 }

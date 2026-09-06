@@ -192,6 +192,10 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
             },
         )
 
+    @app.get("/paper/{item_key}/pdf")
+    def public_pdf(item_key: str) -> FileResponse:
+        return get_pdf(item_key)
+
     @app.put("/api/v1/sync/papers")
     def upsert_paper(body: PaperIn, _: None = Depends(require_sync)) -> dict[str, str]:
         now = utcnow()
@@ -360,8 +364,8 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-            "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; worker-src 'self' blob:; "
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            "font-src 'self'; img-src 'self' data: blob:; worker-src 'self' blob:; "
             "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
         )
         if request.url.path.startswith("/api/"):

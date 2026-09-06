@@ -2,7 +2,7 @@
 
 A personal Zotero paper library on the web.
 
-**Public library:** https://plainlist.space/wepaper
+**Public library:** https://wepaper.plainlist.space
 
 Put papers in a Zotero collection. A local agent copies metadata and PDFs to a small server. Anyone with the URL can browse the list and read the PDF. There is no visitor login. Uploads require a secret.
 
@@ -83,7 +83,7 @@ uv run pytest
 ## Production sync (this Mac)
 
 ```bash
-export WEPAPER_SERVER_URL=https://plainlist.space/wepaper
+export WEPAPER_SERVER_URL=https://wepaper.plainlist.space
 export WEPAPER_SYNC_TOKEN=…          # from /home/ubuntu/wepaper/.env
 export WEPAPER_COLLECTION="wePaper,Agent Memory"
 uv run wepaper doctor

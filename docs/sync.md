@@ -18,7 +18,7 @@ wepaper install-agent   # macOS launchd
 
 ```bash
 export WEPAPER_COLLECTION="wePaper,Agent Memory"
-export WEPAPER_SERVER_URL="https://plainlist.space/wepaper"
+export WEPAPER_SERVER_URL="https://wepaper.plainlist.space"
 export WEPAPER_SYNC_TOKEN="…"   # never commit; never put in VITE_*
 ```
 

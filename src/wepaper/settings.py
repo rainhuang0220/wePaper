@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     data_dir: Path = Path("./data")
     sync_token: str = ""
     max_upload_bytes: int = 80 * 1024 * 1024
-    public_url: str = "http://127.0.0.1:8788"
+    public_url: str = "https://wepaper.plainlist.space"
     host: str = "127.0.0.1"
     port: int = 8788
     log_level: str = "info"

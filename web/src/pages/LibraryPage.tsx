@@ -2,18 +2,33 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { fetchPapers, type Paper } from "../api";
 
-function publicTags(tags: string[]): string[] {
-  return tags.filter((tag) => !tag.startsWith("/") && !/^#?wepaper:/.test(tag.toLowerCase()));
-}
-
-function addedLabel(value: string | null, year: number | null): string {
+function addedLabel(value: string | null): string {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value.slice(0, 10);
-  if (year && date.getFullYear() === year) {
-    return date.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
-  }
-  return date.toLocaleDateString("en-GB", { year: "numeric", month: "short", day: "numeric" });
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function shortAuthors(authors: string): string {
+  const names = authors.split(",").map((part) => part.trim()).filter(Boolean);
+  if (names.length <= 4) return names.join(", ");
+  return `${names.slice(0, 4).join(", ")} et al.`;
+}
+
+function secondLine(paper: Paper): string {
+  const authors = shortAuthors(paper.authors || "Unknown authors");
+  return paper.year ? `${authors} · ${paper.year}` : authors;
+}
+
+function DocIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M4 1.5h5.2L12.5 4.8V14a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5V2A.5.5 0 0 1 4 1.5zm5 .7v2.6h2.6L9 2.2z"
+      />
+    </svg>
+  );
 }
 
 export function LibraryPage() {
@@ -52,77 +67,80 @@ export function LibraryPage() {
   }
 
   const census = useMemo(() => {
-    if (loading) return "Looking through the stacks…";
-    if (query) return `${total} matching ${total === 1 ? "paper" : "papers"}`;
-    return `${total} ${total === 1 ? "paper" : "papers"} in the library`;
-  }, [loading, query, total]);
+    if (loading && papers.length === 0) return "";
+    if (query) return `${total}`;
+    return `${total}`;
+  }, [loading, papers.length, query, total]);
 
   return (
-    <main className="shell">
-      <header className="masthead">
-        <div>
-          <h1 className="wordmark">
-            we<em>Paper</em>
-          </h1>
-          <p className="lede">A quiet reading room for the papers kept in one Zotero collection.</p>
-        </div>
-        <div className="tools">
-          <input
-            type="search"
-            placeholder="Search title, author, venue…"
-            value={query}
-            onChange={(event) => updateParams({ q: event.target.value })}
-            aria-label="Search papers"
-          />
-          <select value={sort} onChange={(event) => updateParams({ sort: event.target.value })} aria-label="Sort">
-            <option value="added">Added</option>
-            <option value="year">Year</option>
-            <option value="title">Title</option>
-          </select>
-        </div>
+    <div className="lib">
+      <header className="lib-bar">
+        <Link className="mark" to="/">
+          wePaper
+        </Link>
+        <input
+          className="lib-search"
+          type="search"
+          placeholder="Search"
+          value={query}
+          onChange={(event) => updateParams({ q: event.target.value })}
+          aria-label="Search papers"
+        />
+        <nav className="sorts" aria-label="Sort">
+          {(
+            [
+              ["added", "Added"],
+              ["year", "Year"],
+              ["title", "Title"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={sort === value ? "on" : undefined}
+              onClick={() => updateParams({ sort: value })}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+        <span className="count">{census}</span>
       </header>
-      <p className="census">{census}</p>
       {error ? (
-        <p className="status" role="alert">
+        <p className="note" role="alert">
           {error}
         </p>
-      ) : !loading && papers.length === 0 ? (
-        <div className="empty">
-          <h2>{query ? "Nothing matches" : "The shelf is empty"}</h2>
-          <p>{query ? "Try a title, author, or venue." : "Nothing has been published to this library yet."}</p>
-        </div>
+      ) : loading && papers.length === 0 ? (
+        <ol className="rows" aria-busy="true" aria-label="Loading papers">
+          {Array.from({ length: 8 }, (_, index) => (
+            <li key={index} className="row-skel" />
+          ))}
+        </ol>
+      ) : papers.length === 0 ? (
+        <p className="note">{query ? "No matching papers." : "No papers published yet."}</p>
       ) : (
-        <ol className="catalog">
+        <ol className="rows">
           {papers.map((paper) => (
             <li key={paper.zotero_item_key}>
-              <Link className="entry" to={`/paper/${paper.zotero_item_key}`}>
-                <h2 className="title">{paper.title}</h2>
-                <p className="byline">{paper.authors || "Unknown authors"}</p>
-                <p className="meta">
-                  {[paper.year, paper.venue, addedLabel(paper.date_added, paper.year), paper.has_pdf ? "PDF" : "Metadata only"]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-                {publicTags(paper.tags).length ? (
-                  <div className="chips">
-                    {publicTags(paper.tags)
-                      .slice(0, 6)
-                      .map((tag) => (
-                      <span className="chip" key={tag}>
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
+              <Link
+                className="row"
+                to={`/paper/${paper.zotero_item_key}`}
+                title={paper.venue ? `${paper.title} — ${paper.venue}` : paper.title}
+              >
+                <span className="gutter" aria-hidden="true">
+                  {paper.has_pdf ? <DocIcon /> : null}
+                </span>
+                <span className="row-main">
+                  <h2>{paper.title}</h2>
+                  <p className="authors">{secondLine(paper)}</p>
+                </span>
+                <time>{addedLabel(paper.date_added)}</time>
               </Link>
             </li>
           ))}
         </ol>
       )}
-      <p className="footer-note">
-        Papers appear here only after a private sync from the operator’s Zotero library. The operator is
-        responsible for what is published. Do not assume every PDF is free to redistribute.
-      </p>
-    </main>
+      <footer className="colophon">Published from a private Zotero collection.</footer>
+    </div>
   );
 }

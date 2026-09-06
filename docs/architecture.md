@@ -57,7 +57,7 @@ Web API remains an optional metadata fallback if the user later provides a key. 
 
 ## Public URL (V1)
 
-`https://plainlist.space/wepaper`
+`https://wepaper.plainlist.space`
 
 Tencent intercepts HTTP-01 for hostnames that are not on the filed domain set. A path on the existing `plainlist.space` certificate is the working HTTPS door. nginx strips `/wepaper/` and proxies to `127.0.0.1:8788`. The UI is built with `WEPAPER_BASE=/wepaper/`.
 
