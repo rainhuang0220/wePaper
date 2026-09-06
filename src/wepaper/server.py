@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import mimetypes
 import re
 import secrets
 import sqlite3
@@ -12,7 +13,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -23,6 +24,7 @@ from wepaper.settings import Settings
 
 log = logging.getLogger("wepaper")
 ITEM_KEY = re.compile(r"^[A-Za-z0-9]{8}$")
+mimetypes.add_type("application/javascript", ".mjs")
 PDF_MAGIC = b"%PDF"
 
 
@@ -162,8 +164,7 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail="not found")
         return _paper_json(conn, row, include_abstract=True)
 
-    @app.get("/api/v1/papers/{item_key}/pdf")
-    def get_pdf(item_key: str) -> FileResponse:
+    def _pdf_file(item_key: str) -> tuple[sqlite3.Row, Path]:
         key = _public_key(item_key)
         att = conn.execute(
             """
@@ -180,21 +181,35 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         path = _blob_path(settings, att["storage_key"])
         if not path.is_file():
             raise HTTPException(status_code=404, detail="pdf missing")
+        return att, path
+
+    def _pdf_headers(att: sqlite3.Row, path: Path) -> dict[str, str]:
+        return {
+            "Cache-Control": "private, max-age=3600",
+            "X-Content-Type-Options": "nosniff",
+            "Accept-Ranges": "bytes",
+            "ETag": f'"{att["checksum"]}"',
+            "Content-Disposition": f'inline; filename="{sanitize_filename(att["filename"])}"',
+        }
+
+    @app.api_route("/api/v1/papers/{item_key}/pdf", methods=["GET", "HEAD"], response_model=None)
+    def get_pdf(item_key: str, request: Request) -> FileResponse | Response:
+        att, path = _pdf_file(item_key)
+        headers = _pdf_headers(att, path)
+        if request.method == "HEAD":
+            headers["Content-Length"] = str(path.stat().st_size)
+            return Response(status_code=200, media_type="application/pdf", headers=headers)
         return FileResponse(
             path,
             media_type="application/pdf",
             filename=sanitize_filename(att["filename"]),
             content_disposition_type="inline",
-            headers={
-                "Cache-Control": "private, no-store",
-                "X-Content-Type-Options": "nosniff",
-                "ETag": f'"{att["checksum"]}"',
-            },
+            headers=headers,
         )
 
-    @app.get("/paper/{item_key}/pdf")
-    def public_pdf(item_key: str) -> FileResponse:
-        return get_pdf(item_key)
+    @app.api_route("/paper/{item_key}/pdf", methods=["GET", "HEAD"], response_model=None)
+    def public_pdf(item_key: str, request: Request) -> FileResponse | Response:
+        return get_pdf(item_key, request)
 
     @app.put("/api/v1/sync/papers")
     def upsert_paper(body: PaperIn, _: None = Depends(require_sync)) -> dict[str, str]:
@@ -368,7 +383,9 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
             "font-src 'self'; img-src 'self' data: blob:; worker-src 'self' blob:; "
             "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
         )
-        if request.url.path.startswith("/api/"):
+        if request.url.path.startswith("/assets/"):
+            response.headers.setdefault("Cache-Control", "public, max-age=31536000, immutable")
+        elif request.url.path.startswith("/api/"):
             response.headers.setdefault("Cache-Control", "no-store")
         return response
 

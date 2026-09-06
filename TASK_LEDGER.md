@@ -1,44 +1,49 @@
 # TASK_LEDGER
 
-MISSION: wePaper V1.1 UX / Reader reconstruction
+MISSION: wePaper V1.2 performance / fidelity / release
 
-## V1.1
+## V1.2
 
-- [x] Load/Create long-run Skill
-- [x] Spawn frontend benchmark agent
-- [x] Spawn PDF reader investigator
-- [x] Verify current PDF architecture
-- [x] UI benchmark
-- [x] Select visual references
-- [x] Redesign library
-- [x] Rebuild reader with continuous scroll
-- [x] Verify real PDF transport
-- [x] Reader performance / lazy rendering
-- [x] Reader desktop
-- [x] Reader mobile
-- [x] Verify wepaper.plainlist.space DNS
-- [x] Configure independent origin
-- [x] HTTPS
-- [x] Migrate public app
-- [x] Update local Sync Agent endpoint
-- [x] Existing backend regression
+- [x] Load V1.2 Skill
+- [x] Spawn performance investigator
+- [x] Spawn PDF fidelity investigator
+- [x] Spawn release provenance auditor
+- [x] Profile cold paper opening
+- [x] Identify 10-second bottleneck
+- [x] Fix first-page latency
+- [x] Verify Range behavior
+- [x] Verify first-page-first loading
+- [x] Audit canvas backing resolution
+- [x] Add proper high-DPI rendering
+- [x] Fix zoom re-rendering
+- [x] Raise usable zoom range
+- [x] Verify text layer alignment
+- [x] Compare against native PDF baseline
+- [x] Desktop browser benchmark
+- [x] Mobile browser benchmark
+- [x] Existing reader regression
 - [x] Real Zotero regression
-- [x] Browser E2E desktop
-- [x] Browser E2E mobile
-- [x] Visual critic
-- [x] Fix HIGH / MEDIUM UI findings
 - [x] Security regression
-- [x] Screenshot second pass
-- [x] Public E2E
-- [x] Documentation
-- [x] Final clean git state
+- [x] Locate authoritative Git history
+- [x] Verify 42cf3a6
+- [x] Verify 0ee7e3d
+- [x] Secret/privacy scan
+- [x] License audit
+- [ ] Create dedicated GitHub repo
+- [ ] Push real main history
+- [ ] Verify public commit URLs
+- [ ] Create v1.2.0 tag
+- [ ] Create GitHub Release
+- [ ] Verify production == release commit
+- [ ] Spawn final adversarial reviewer
+- [ ] Fix HIGH/MEDIUM findings
+- [x] Final production benchmark
+- [ ] Public E2E
 
 ## Notes
 
-- Started V1.1: 2026-09-07
-- Preserve working backend and sync semantics.
+- Started V1.2: 2026-09-07
 - Canonical URL: https://wepaper.plainlist.space
-- Visual refs: Zotero Web Library, Mozilla PDF.js viewer, Miniflux editorial
-- Playwright: 4 passed (desktop 1440×900, mobile 390×844) against production
-- Pytest: 46 passed
-- Sync: 9 papers UNCHANGED against the new origin
+- 10s cause: full-file PDF.js stream + nginx `proxy_cache` poisoning Range 206 + uncompressed worker/JS
+- Small-paper cold click P50 ~360 ms / P95 ~845 ms
+- Medium/large still path-bound on serial Range from this Mac

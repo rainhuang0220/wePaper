@@ -20,7 +20,7 @@ Process: `uvicorn` on `127.0.0.1:8788` via systemd `wepaper.service`.
 
 TLS: Let's Encrypt `wepaper.plainlist.space` via webroot `/var/www/letsencrypt`.
 
-nginx vhost: `/www/server/panel/vhost/nginx/wepaper.plainlist.space.conf` (repo: `deploy/nginx-wepaper.plainlist.space.conf`). Proxies `/` → `127.0.0.1:8788` with `Range` / `If-Range` / `gzip off`.
+nginx vhost: `/www/server/panel/vhost/nginx/wepaper.plainlist.space.conf` (repo: `deploy/nginx-wepaper.plainlist.space.conf`). Proxies `/` → `127.0.0.1:8788` with `Range` / `If-Range` and **`proxy_cache off`**. 宝塔’s global `proxy.conf` turns `proxy_cache` on; caching a PDF `206` would replace the file with a 64KB fragment. Gzip is on for JS/CSS/JSON only — `application/pdf` is not in `gzip_types`, so byte ranges stay valid.
 
 ## Deploy
 

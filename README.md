@@ -13,16 +13,30 @@ Zotero on your Mac
 wepaper sync / daemon
       │  HTTPS + bearer token
       ▼
-wePaper server  →  public list  →  PDF.js reader
+wePaper server  →  public list  →  continuous PDF.js reader
 ```
+
+## Features
+
+- Sync a chosen Zotero collection without writing `zotero.sqlite`
+- Public catalog as a dense list (title, authors, year)
+- Continuous vertical PDF reader over real `application/pdf` bytes
+- First-page-first load with HTTP Range and lazy page render
+- High-DPI canvas, zoom 50–400% with re-render
+- Text selection and in-document find
+
+## Screenshots
+
+![Library](docs/screenshots/v11-pass2-library-desktop.png)
+![Reader](docs/screenshots/v11-pass2-reader-desktop.png)
 
 ## Requirements
 
-- Zotero 7+ (this project was built against Zotero 10)
-- Python 3.12 and [uv](https://github.com/astral-sh/uv)
+- Zotero 7+ (built against Zotero 10)
+- Python 3.12 and [uv](https://astral.sh/uv)
 - Node 20+ to build the web UI
 
-## Run locally
+## Local development
 
 ```bash
 uv sync --extra dev
@@ -32,14 +46,16 @@ export WEPAPER_SYNC_TOKEN=dev-token
 export WEPAPER_COLLECTION="wePaper,Agent Memory"
 export WEPAPER_SERVER_URL=http://127.0.0.1:8788
 uv run wepaper serve --host 127.0.0.1 --port 8788
-# other terminal
+```
+
+```bash
 uv run wepaper doctor
 uv run wepaper sync --once
 ```
 
 Open http://127.0.0.1:8788/
 
-## Zotero
+## Sync setup
 
 1. Settings → Advanced → **Allow other applications on this computer to communicate with Zotero**
 2. Create a collection named `wePaper` (or set `WEPAPER_COLLECTION`)
@@ -47,58 +63,37 @@ Open http://127.0.0.1:8788/
 
 The agent never writes `zotero.sqlite` and never changes your library.
 
-## Commands
-
 | Command | Purpose |
 | --- | --- |
 | `wepaper doctor` | Check Zotero, Local API, collections, token |
 | `wepaper sync --once` | One reconcile |
-| `wepaper daemon` | Background poll (single instance) |
-| `wepaper status` | Last cursor |
-| `wepaper install-agent` | macOS launchd |
+| `wepaper daemon` | Background poll |
+| `wepaper install-agent` | macOS launchd (token in `~/.config/wepaper/agent.env`, not the plist) |
 | `wepaper serve` | API + UI |
 
-## Secrets
+## Server deployment
 
-`WEPAPER_SYNC_TOKEN` authenticates every write. It must not appear in the frontend, in git, or in `VITE_*` variables. See `.env.example`.
+See [docs/deployment.md](docs/deployment.md). Production origin is `https://wepaper.plainlist.space`.
 
-## Visibility
+## Security model
 
-V1 lists `public` papers. `#wepaper:private` hides a paper from the list and the PDF route. Removing an item from the collection hides it. The operator is the publisher of record — wePaper does not decide copyright.
+- Public read, bearer-authenticated write
+- `WEPAPER_SYNC_TOKEN` must not appear in the frontend, git, or `VITE_*` variables
+- `/openapi.json` is disabled; CSP + `X-Frame-Options: DENY`
+- Blob keys are `{sha256}.pdf`; traversal is rejected; upload size is capped
+- Visibility: `#wepaper:private` hides list + PDF; collection removal hides
 
-## Tests
+## Testing
 
 ```bash
 uv run pytest
+cd web && npm run e2e
 ```
 
-## Docs
+## Reader architecture
 
-- [Architecture](docs/architecture.md)
-- [Sync](docs/sync.md)
-- [Deployment](docs/deployment.md)
-- [Architecture review](ARCHITECTURE_REVIEW.md)
-- [Prior art](REFERENCE_RESEARCH.md)
+The server stores real PDF blobs and serves `application/pdf` with byte ranges. The browser loads them with pinned `pdfjs-dist`, renders visible pages to a high-DPI canvas, and overlays a PDF.js text layer. Page 1 is shown before remaining pages are measured or indexed.
 
-## Production sync (this Mac)
+## License
 
-```bash
-export WEPAPER_SERVER_URL=https://wepaper.plainlist.space
-export WEPAPER_SYNC_TOKEN=…          # from /home/ubuntu/wepaper/.env
-export WEPAPER_COLLECTION="wePaper,Agent Memory"
-uv run wepaper doctor
-uv run wepaper sync --once
-uv run wepaper install-agent         # launchd; token lives in ~/.config/wepaper/agent.env
-```
-
-There is no `wePaper` collection on this library yet. Papers currently published come from **Agent Memory**. Create a Zotero collection named `wePaper` when you want that to be the publish set.
-
-## Troubleshooting
-
-| Symptom | What to do |
-| --- | --- |
-| `403 Local API is not enabled` | Enable the Advanced checkbox; restart Zotero |
-| `Zotero is not running` | Open Zotero, then `wepaper doctor` |
-| Collection not found | `WEPAPER_COLLECTION` must match a real name |
-| Writes return 401 | Token on the agent and server must match |
-| PDF 404 after removal | Expected: hide unpublishes the file |
+MIT. Third-party notices are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { fetchPapers, type Paper } from "../api";
+import { fetchPapers, pdfUrl, type Paper } from "../api";
+import { warmPdf } from "../pdfLoader";
 
 function addedLabel(value: string | null): string {
   if (!value) return "";
@@ -126,6 +127,9 @@ export function LibraryPage() {
                 className="row"
                 to={`/paper/${paper.zotero_item_key}`}
                 title={paper.venue ? `${paper.title} — ${paper.venue}` : paper.title}
+                onPointerEnter={() => {
+                  if (paper.has_pdf) warmPdf(pdfUrl(paper.zotero_item_key));
+                }}
               >
                 <span className="gutter" aria-hidden="true">
                   {paper.has_pdf ? <DocIcon /> : null}

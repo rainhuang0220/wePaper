@@ -15,7 +15,9 @@ test("library search and continuous reader", async ({ page }) => {
   const pageOne = page.locator('[data-testid="pdf-page-1"]');
   const pageTwo = page.locator('[data-testid="pdf-page-2"]');
   const pageThree = page.locator('[data-testid="pdf-page-3"]');
-  await expect(pageOne).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('[data-testid="pdf-page-1"][data-ready="true"]')).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(page.locator(".reader-scroll canvas").first()).toBeVisible({ timeout: 30_000 });
 
   await pageThree.evaluate((el) => el.scrollIntoView({ block: "start" }));

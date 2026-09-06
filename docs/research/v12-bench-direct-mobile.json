@@ -1,0 +1,58 @@
+[
+  {
+    "project": "mobile",
+    "key": "PSELS7ZT",
+    "size": "small",
+    "bytes": 227651,
+    "coldMs": 2108,
+    "warmMs": 109,
+    "backingWidth": 954,
+    "backingHeight": 1234,
+    "cssWidth": 318,
+    "cssHeight": 412,
+    "dpr": 3,
+    "at": "2026-09-06T18:55:18.495Z"
+  },
+  {
+    "project": "mobile",
+    "key": "PAS2TSBP",
+    "size": "medium",
+    "bytes": 2705358,
+    "coldMs": 7454,
+    "warmMs": 9864,
+    "backingWidth": 954,
+    "backingHeight": 1234,
+    "cssWidth": 318,
+    "cssHeight": 412,
+    "dpr": 3,
+    "at": "2026-09-06T18:55:35.826Z"
+  },
+  {
+    "project": "mobile",
+    "key": "MUZIM3FK",
+    "size": "linearized",
+    "bytes": 1895106,
+    "coldMs": 6614,
+    "warmMs": 7859,
+    "backingWidth": 954,
+    "backingHeight": 1234,
+    "cssWidth": 318,
+    "cssHeight": 412,
+    "dpr": 3,
+    "at": "2026-09-06T18:55:50.311Z"
+  },
+  {
+    "project": "mobile",
+    "key": "3FYGRVK7",
+    "size": "large",
+    "bytes": 5568857,
+    "coldMs": 9896,
+    "warmMs": 8884,
+    "backingWidth": 954,
+    "backingHeight": 1234,
+    "cssWidth": 318,
+    "cssHeight": 412,
+    "dpr": 3,
+    "at": "2026-09-06T18:56:09.103Z"
+  }
+]

@@ -1,0 +1,183 @@
+{
+  "p50": 3851,
+  "p95": 4853,
+  "samples": [
+    845,
+    4853,
+    3851,
+    8883
+  ],
+  "ordinaryMs": [
+    845,
+    4853,
+    3851
+  ],
+  "records": [
+    {
+      "kind": "catalog-click",
+      "project": "desktop",
+      "key": "PSELS7ZT",
+      "size": "small",
+      "bytes": 227651,
+      "firstPageMs": 845,
+      "backingWidth": 2736,
+      "backingHeight": 3540,
+      "cssWidth": 1368,
+      "cssHeight": 1770,
+      "dpr": 2,
+      "pdfResources": [
+        {
+          "name": "https://wepaper.plainlist.space/assets/pdf.worker.min-iDqQPrd3.mjs",
+          "duration": 1633,
+          "transferSize": 366201,
+          "encodedBodySize": 365901
+        },
+        {
+          "name": "https://wepaper.plainlist.space/assets/pdf.worker.min-iDqQPrd3.mjs",
+          "duration": 1,
+          "transferSize": 300,
+          "encodedBodySize": 365901
+        },
+        {
+          "name": "https://wepaper.plainlist.space/paper/PSELS7ZT/pdf",
+          "duration": 151,
+          "transferSize": 227951,
+          "encodedBodySize": 227651
+        }
+      ],
+      "at": "2026-09-06T18:57:52.230Z"
+    },
+    {
+      "kind": "catalog-click",
+      "project": "desktop",
+      "key": "PAS2TSBP",
+      "size": "medium",
+      "bytes": 2705358,
+      "firstPageMs": 4853,
+      "backingWidth": 2736,
+      "backingHeight": 3540,
+      "cssWidth": 1368,
+      "cssHeight": 1770,
+      "dpr": 2,
+      "pdfResources": [
+        {
+          "name": "https://wepaper.plainlist.space/assets/pdf.worker.min-iDqQPrd3.mjs",
+          "duration": 0,
+          "transferSize": 0,
+          "encodedBodySize": 365901
+        },
+        {
+          "name": "https://wepaper.plainlist.space/assets/pdf.worker.min-iDqQPrd3.mjs",
+          "duration": 1,
+          "transferSize": 0,
+          "encodedBodySize": 365901
+        },
+        {
+          "name": "https://wepaper.plainlist.space/paper/PAS2TSBP/pdf",
+          "duration": 76,
+          "transferSize": 300,
+          "encodedBodySize": 0
+        },
+        {
+          "name": "https://wepaper.plainlist.space/paper/PAS2TSBP/pdf",
+          "duration": 3228,
+          "transferSize": 1048876,
+          "encodedBodySize": 1048576
+        },
+        {
+          "name": "https://wepaper.plainlist.space/paper/PAS2TSBP/pdf",
+          "duration": 1313,
+          "transferSize": 608506,
+          "encodedBodySize": 608206
+        }
+      ],
+      "at": "2026-09-06T18:57:57.500Z"
+    },
+    {
+      "kind": "catalog-click",
+      "project": "desktop",
+      "key": "MUZIM3FK",
+      "size": "linearized",
+      "bytes": 1895106,
+      "firstPageMs": 3851,
+      "backingWidth": 2736,
+      "backingHeight": 3540,
+      "cssWidth": 1368,
+      "cssHeight": 1770,
+      "dpr": 2,
+      "pdfResources": [
+        {
+          "name": "https://wepaper.plainlist.space/assets/pdf.worker.min-iDqQPrd3.mjs",
+          "duration": 0,
+          "transferSize": 0,
+          "encodedBodySize": 365901
+        },
+        {
+          "name": "https://wepaper.plainlist.space/assets/pdf.worker.min-iDqQPrd3.mjs",
+          "duration": 1,
+          "transferSize": 0,
+          "encodedBodySize": 365901
+        },
+        {
+          "name": "https://wepaper.plainlist.space/paper/MUZIM3FK/pdf",
+          "duration": 3624,
+          "transferSize": 1895406,
+          "encodedBodySize": 1895106
+        }
+      ],
+      "at": "2026-09-06T18:58:01.759Z"
+    },
+    {
+      "kind": "catalog-click",
+      "project": "desktop",
+      "key": "3FYGRVK7",
+      "size": "large",
+      "bytes": 5568857,
+      "firstPageMs": 8883,
+      "backingWidth": 2736,
+      "backingHeight": 3540,
+      "cssWidth": 1368,
+      "cssHeight": 1770,
+      "dpr": 2,
+      "pdfResources": [
+        {
+          "name": "https://wepaper.plainlist.space/assets/pdf.worker.min-iDqQPrd3.mjs",
+          "duration": 0,
+          "transferSize": 0,
+          "encodedBodySize": 365901
+        },
+        {
+          "name": "https://wepaper.plainlist.space/assets/pdf.worker.min-iDqQPrd3.mjs",
+          "duration": 1,
+          "transferSize": 0,
+          "encodedBodySize": 365901
+        },
+        {
+          "name": "https://wepaper.plainlist.space/paper/3FYGRVK7/pdf",
+          "duration": 76,
+          "transferSize": 300,
+          "encodedBodySize": 0
+        },
+        {
+          "name": "https://wepaper.plainlist.space/paper/3FYGRVK7/pdf",
+          "duration": 5357,
+          "transferSize": 1048876,
+          "encodedBodySize": 1048576
+        },
+        {
+          "name": "https://wepaper.plainlist.space/paper/3FYGRVK7/pdf",
+          "duration": 802,
+          "transferSize": 326277,
+          "encodedBodySize": 325977
+        },
+        {
+          "name": "https://wepaper.plainlist.space/paper/3FYGRVK7/pdf",
+          "duration": 2127,
+          "transferSize": 1048876,
+          "encodedBodySize": 1048576
+        }
+      ],
+      "at": "2026-09-06T18:58:11.042Z"
+    }
+  ]
+}

@@ -5,6 +5,14 @@ import { LibraryPage } from "./pages/LibraryPage";
 import { PaperPage } from "./pages/PaperPage";
 import "./styles.css";
 
+const workerHref = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).href;
+if (typeof document !== "undefined" && !document.querySelector(`link[href="${workerHref}"]`)) {
+  const preload = document.createElement("link");
+  preload.rel = "modulepreload";
+  preload.href = workerHref;
+  document.head.appendChild(preload);
+}
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "") || undefined}>

@@ -1,5 +1,7 @@
 # V1.1 origin isolation — deployment scout (2026-09-07)
 
+**Outcome (shipped in `0ee7e3d`):** `https://wepaper.plainlist.space` is the canonical origin. Cert issued via webroot, dedicated nginx vhost proxies `:8788` with Range, legacy `/wepaper/` 301s to the subdomain, one data dir. The TLS/vhost findings below are the pre-cutover snapshot.
+
 Scout: Subagent C (read-only on production nginx; no destructive changes applied).
 
 **Goal:** Move canonical public origin from `https://plainlist.space/wepaper/` to `https://wepaper.plainlist.space/` while keeping one FastAPI instance on `127.0.0.1:8788` and one data dir (`/var/lib/wepaper`).

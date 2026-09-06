@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Link } from "react-router-dom";
 import * as pdfjs from "pdfjs-dist";
+import { backingStore } from "./canvasScale";
 import { findPageHits, nextHit, prevHit } from "./findHits";
+import { loadPdf } from "./pdfLoader";
 import { pageWindow } from "./pdfWindow";
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).toString();
+import { nextZoom } from "./zoomSteps";
 
 type Props = { url: string };
 type PageSize = { width: number; height: number };
@@ -34,12 +32,13 @@ export function PdfReader({ url }: Props) {
   const [pageCount, setPageCount] = useState(1);
   const [current, setCurrent] = useState(1);
   const [zoom, setZoom] = useState(1);
-  const [fitWidth, setFitWidth] = useState(false);
+  const [fitWidth, setFitWidth] = useState(true);
   const [query, setQuery] = useState("");
   const [findOpen, setFindOpen] = useState(false);
   const [pageTexts, setPageTexts] = useState<string[]>([]);
   const [status, setStatus] = useState("Opening");
-  const [widths, setWidths] = useState(720);
+  const [widths, setWidths] = useState(0);
+  const [firstReady, setFirstReady] = useState(false);
   const findRef = useRef<HTMLInputElement>(null);
   const pageEls = useRef(new Map<number, HTMLDivElement>());
 
@@ -49,48 +48,61 @@ export function PdfReader({ url }: Props) {
     setSizes([]);
     setPageTexts([]);
     setCurrent(1);
+    setFirstReady(false);
     setStatus("Opening");
-    const task = pdfjs.getDocument({ url, withCredentials: false });
-    task.promise
+    const pending = loadPdf(url);
+    pending
       .then(async (doc) => {
         const first = await doc.getPage(1);
         const viewport = first.getViewport({ scale: 1 });
-        const measured: PageSize[] = Array.from({ length: doc.numPages }, () => ({
-          width: viewport.width,
-          height: viewport.height,
-        }));
-        if (cancelled) {
-          void doc.destroy();
-          return;
-        }
-        setSizes(measured);
+        if (cancelled) return;
+        setSizes(
+          Array.from({ length: doc.numPages }, () => ({
+            width: viewport.width,
+            height: viewport.height,
+          })),
+        );
         setPdf(doc);
         setPageCount(doc.numPages);
         setStatus("");
         const hash = window.location.hash.match(/page=(\d+)/i);
         if (hash) setCurrent(Math.min(doc.numPages, Math.max(1, Number(hash[1]))));
-        for (let index = 2; index <= doc.numPages; index += 1) {
-          const page = await doc.getPage(index);
-          const next = page.getViewport({ scale: 1 });
-          measured[index - 1] = { width: next.width, height: next.height };
-          if (cancelled) {
-            void doc.destroy();
-            return;
-          }
-        }
-        if (!cancelled) setSizes([...measured]);
       })
       .catch(() => {
         if (!cancelled) setStatus("The PDF could not be opened.");
       });
     return () => {
       cancelled = true;
-      void task.destroy();
     };
   }, [url]);
 
   useEffect(() => {
-    if (!pdf) return;
+    if (!pdf || !firstReady) return;
+    let cancelled = false;
+    void (async () => {
+      const first = await pdf.getPage(1);
+      const base = first.getViewport({ scale: 1 });
+      const measured: PageSize[] = Array.from({ length: pdf.numPages }, () => ({
+        width: base.width,
+        height: base.height,
+      }));
+      let changed = false;
+      for (let index = 2; index <= pdf.numPages; index += 1) {
+        const page = await pdf.getPage(index);
+        const next = page.getViewport({ scale: 1 });
+        measured[index - 1] = { width: next.width, height: next.height };
+        if (next.width !== base.width || next.height !== base.height) changed = true;
+        if (cancelled) return;
+      }
+      if (!cancelled && changed) setSizes(measured);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pdf, firstReady]);
+
+  useEffect(() => {
+    if (!pdf || !findOpen) return;
     let cancelled = false;
     void (async () => {
       const texts: string[] = [];
@@ -105,7 +117,7 @@ export function PdfReader({ url }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [pdf]);
+  }, [pdf, findOpen]);
 
   useEffect(() => {
     const node = scrollerRef.current;
@@ -117,13 +129,11 @@ export function PdfReader({ url }: Props) {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (!sizes[0] || !widths) return;
-    if (sizes[0].width > widths - 48) setFitWidth(true);
-  }, [sizes, widths]);
-
   const hits = useMemo(() => findPageHits(pageTexts, query), [pageTexts, query]);
-  const renderSet = useMemo(() => new Set(pageWindow(current, pageCount, 2)), [current, pageCount]);
+  const renderSet = useMemo(
+    () => new Set(firstReady ? pageWindow(current, pageCount, 2) : pageWindow(current, pageCount, 0)),
+    [current, pageCount, firstReady],
+  );
 
   useEffect(() => {
     const root = scrollerRef.current;
@@ -141,18 +151,6 @@ export function PdfReader({ url }: Props) {
     return () => root.removeEventListener("scroll", onScroll);
   }, [pdf, pageCount, sizes, zoom, fitWidth, widths]);
 
-  useEffect(() => {
-    if (!pdf || !sizes.length) return;
-    const wanted = current;
-    const el = pageEls.current.get(wanted);
-    if (!el) return;
-    const root = scrollerRef.current;
-    if (!root) return;
-    const visible =
-      el.offsetTop < root.scrollTop + root.clientHeight && el.offsetTop + el.offsetHeight > root.scrollTop;
-    if (!visible) el.scrollIntoView({ block: "start" });
-  }, [pdf, sizes]);
-
   function goTo(page: number) {
     const next = Math.min(pageCount, Math.max(1, page));
     setCurrent(next);
@@ -162,6 +160,11 @@ export function PdfReader({ url }: Props) {
   function jumpHit(direction: 1 | -1) {
     const page = direction === 1 ? nextHit(hits, current) : prevHit(hits, current);
     if (page) goTo(page);
+  }
+
+  function bumpZoom(direction: 1 | -1) {
+    setFitWidth(false);
+    setZoom((value) => nextZoom(value, direction));
   }
 
   useEffect(() => {
@@ -184,14 +187,8 @@ export function PdfReader({ url }: Props) {
         }
         return;
       }
-      if (event.key === "+" || event.key === "=") {
-        setFitWidth(false);
-        setZoom((value) => Math.min(3, value + 0.1));
-      }
-      if (event.key === "-" || event.key === "_") {
-        setFitWidth(false);
-        setZoom((value) => Math.max(0.4, value - 0.1));
-      }
+      if (event.key === "+" || event.key === "=") bumpZoom(1);
+      if (event.key === "-" || event.key === "_") bumpZoom(-1);
       if (event.key === "0") {
         setFitWidth(false);
         setZoom(1);
@@ -205,12 +202,8 @@ export function PdfReader({ url }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  function bumpZoom(delta: number) {
-    setFitWidth(false);
-    setZoom((value) => Math.min(3, Math.max(0.4, Math.round((value + delta) * 10) / 10)));
-  }
-
   const zoomLabel = fitWidth ? "Fit" : `${Math.round(zoom * 100)}%`;
+  const scrollerWidth = widths || 720;
 
   return (
     <div className="reader">
@@ -255,7 +248,7 @@ export function PdfReader({ url }: Props) {
           )}
         </div>
         <div className="tools-right">
-          <button type="button" onClick={() => bumpZoom(-0.1)} aria-label="Zoom out">
+          <button type="button" onClick={() => bumpZoom(-1)} aria-label="Zoom out">
             <Icon label="Zoom out" path="M3 7.5h10v1H3z" />
           </button>
           <button
@@ -273,7 +266,7 @@ export function PdfReader({ url }: Props) {
           >
             {zoomLabel}
           </button>
-          <button type="button" onClick={() => bumpZoom(0.1)} aria-label="Zoom in">
+          <button type="button" onClick={() => bumpZoom(1)} aria-label="Zoom in">
             <Icon label="Zoom in" path="M7.5 3v4.5H3v1h4.5V13h1V8.5H13v-1H8.5V3z" />
           </button>
           <button
@@ -303,7 +296,7 @@ export function PdfReader({ url }: Props) {
         {pdf
           ? sizes.map((size, index) => {
               const page = index + 1;
-              const scale = fitWidth ? Math.max(0.2, (widths - 144) / size.width) : zoom;
+              const scale = fitWidth ? Math.max(0.2, (scrollerWidth - 72) / size.width) : zoom;
               const css = { width: size.width * scale, height: size.height * scale };
               return (
                 <PdfPage
@@ -314,6 +307,7 @@ export function PdfReader({ url }: Props) {
                   css={css}
                   active={renderSet.has(page)}
                   query={query}
+                  onReady={() => setFirstReady(true)}
                   register={(el) => {
                     if (el) pageEls.current.set(page, el);
                     else pageEls.current.delete(page);
@@ -334,6 +328,7 @@ function PdfPage({
   css,
   active,
   query,
+  onReady,
   register,
 }: {
   pdf: pdfjs.PDFDocumentProxy;
@@ -342,13 +337,20 @@ function PdfPage({
   css: { width: number; height: number };
   active: boolean;
   query: string;
+  onReady?: () => void;
   register: (el: HTMLDivElement | null) => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      setReady(false);
+      return;
+    }
     let gone = false;
     let renderTask: pdfjs.RenderTask | undefined;
     let textLayer: pdfjs.TextLayer | undefined;
@@ -358,21 +360,23 @@ function PdfPage({
       const canvas = canvasRef.current;
       const layer = textRef.current;
       if (!canvas || !layer) return;
-      const ratio = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.floor(viewport.width * ratio);
-      canvas.height = Math.floor(viewport.height * ratio);
+      const store = backingStore(viewport.width, viewport.height, window.devicePixelRatio || 1);
+      canvas.width = store.width;
+      canvas.height = store.height;
       canvas.style.width = `${viewport.width}px`;
       canvas.style.height = `${viewport.height}px`;
-      const context = canvas.getContext("2d");
+      const context = canvas.getContext("2d", { alpha: false });
       if (!context) return;
-      context.setTransform(ratio, 0, 0, ratio, 0, 0);
-      renderTask = pdfPage.render({ canvasContext: context, viewport, canvas });
+      const transform = store.ratio !== 1 ? [store.ratio, 0, 0, store.ratio, 0, 0] : undefined;
+      renderTask = pdfPage.render({ canvasContext: context, viewport, canvas, transform });
       try {
         await renderTask.promise;
       } catch {
         return;
       }
       if (gone) return;
+      setReady(true);
+      onReadyRef.current?.();
       layer.replaceChildren();
       layer.style.width = `${viewport.width}px`;
       layer.style.height = `${viewport.height}px`;
@@ -403,6 +407,8 @@ function PdfPage({
       className="pdf-page"
       data-page={page}
       data-testid={`pdf-page-${page}`}
+      data-ready={ready ? "true" : "false"}
+      data-canvas-width={ready ? canvasRef.current?.width : undefined}
       ref={register}
       style={
         {

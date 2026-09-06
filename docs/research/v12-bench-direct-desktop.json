@@ -1,0 +1,58 @@
+[
+  {
+    "project": "desktop",
+    "key": "PSELS7ZT",
+    "size": "small",
+    "bytes": 227651,
+    "coldMs": 2172,
+    "warmMs": 112,
+    "backingWidth": 2736,
+    "backingHeight": 3540,
+    "cssWidth": 1368,
+    "cssHeight": 1770,
+    "dpr": 2,
+    "at": "2026-09-06T18:53:53.724Z"
+  },
+  {
+    "project": "desktop",
+    "key": "PAS2TSBP",
+    "size": "medium",
+    "bytes": 2705358,
+    "coldMs": 4925,
+    "warmMs": 8882,
+    "backingWidth": 2736,
+    "backingHeight": 3540,
+    "cssWidth": 1368,
+    "cssHeight": 1770,
+    "dpr": 2,
+    "at": "2026-09-06T18:54:07.554Z"
+  },
+  {
+    "project": "desktop",
+    "key": "MUZIM3FK",
+    "size": "linearized",
+    "bytes": 1895106,
+    "coldMs": 6385,
+    "warmMs": 6353,
+    "backingWidth": 2736,
+    "backingHeight": 3540,
+    "cssWidth": 1368,
+    "cssHeight": 1770,
+    "dpr": 2,
+    "at": "2026-09-06T18:54:20.312Z"
+  },
+  {
+    "project": "desktop",
+    "key": "3FYGRVK7",
+    "size": "large",
+    "bytes": 5568857,
+    "coldMs": 8962,
+    "warmMs": 11910,
+    "backingWidth": 2736,
+    "backingHeight": 3540,
+    "cssWidth": 1368,
+    "cssHeight": 1770,
+    "dpr": 2,
+    "at": "2026-09-06T18:54:41.204Z"
+  }
+]
