@@ -65,7 +65,6 @@ export function PdfReader({ url }: Props) {
         setPdf(doc);
         setPageCount(doc.numPages);
         setStatus("");
-        void persistPdf(url, doc);
         const hash = window.location.hash.match(/page=(\d+)/i);
         if (hash) setCurrent(Math.min(doc.numPages, Math.max(1, Number(hash[1]))));
       })
@@ -79,6 +78,7 @@ export function PdfReader({ url }: Props) {
 
   useEffect(() => {
     if (!pdf || !firstReady) return;
+    void persistPdf(url, pdf);
     let cancelled = false;
     void (async () => {
       const first = await pdf.getPage(1);
@@ -100,7 +100,7 @@ export function PdfReader({ url }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [pdf, firstReady]);
+  }, [pdf, firstReady, url]);
 
   useEffect(() => {
     if (!pdf || !findOpen) return;

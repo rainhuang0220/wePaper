@@ -11,6 +11,11 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "off",
+    launchOptions: {
+      args: process.env.WEPAPER_RESOLVE_IP
+        ? [`--host-resolver-rules=MAP wepaper.plainlist.space ${process.env.WEPAPER_RESOLVE_IP}`]
+        : [],
+    },
   },
   projects: [
     {

@@ -1,11 +1,11 @@
 {
-  "p50": 1896,
-  "p95": 2360,
+  "p50": 1377,
+  "p95": 1861,
   "samples": [
-    839,
-    2360,
-    1896,
-    2355
+    1336,
+    1377,
+    1861,
+    1855
   ],
   "records": [
     {
@@ -13,52 +13,52 @@
       "key": "PSELS7ZT",
       "size": "small",
       "bytes": 227651,
-      "firstPageMs": 839,
+      "firstPageMs": 1336,
       "backingWidth": 2736,
       "backingHeight": 3540,
       "cssWidth": 1368,
       "cssHeight": 1770,
       "dpr": 2,
-      "at": "2026-09-06T19:22:43.485Z"
+      "at": "2026-09-06T19:37:56.263Z"
     },
     {
       "project": "desktop",
       "key": "PAS2TSBP",
       "size": "medium",
       "bytes": 2705358,
-      "firstPageMs": 2360,
+      "firstPageMs": 1377,
       "backingWidth": 2736,
       "backingHeight": 3540,
       "cssWidth": 1368,
       "cssHeight": 1770,
       "dpr": 2,
-      "at": "2026-09-06T19:22:49.648Z"
+      "at": "2026-09-06T19:37:59.260Z"
     },
     {
       "project": "desktop",
       "key": "MUZIM3FK",
       "size": "linearized",
       "bytes": 1895106,
-      "firstPageMs": 1896,
+      "firstPageMs": 1861,
       "backingWidth": 2736,
       "backingHeight": 3540,
       "cssWidth": 1368,
       "cssHeight": 1770,
       "dpr": 2,
-      "at": "2026-09-06T19:22:54.860Z"
+      "at": "2026-09-06T19:38:05.193Z"
     },
     {
       "project": "desktop",
       "key": "3FYGRVK7",
       "size": "large",
       "bytes": 5568857,
-      "firstPageMs": 2355,
+      "firstPageMs": 1855,
       "backingWidth": 2736,
       "backingHeight": 3540,
       "cssWidth": 1368,
       "cssHeight": 1770,
       "dpr": 2,
-      "at": "2026-09-06T19:23:01.173Z"
+      "at": "2026-09-06T19:38:11.376Z"
     }
   ]
 }

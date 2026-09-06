@@ -1,11 +1,11 @@
 {
-  "p50": 1849,
-  "p95": 2863,
+  "p50": 1343,
+  "p95": 2360,
   "samples": [
-    840,
-    1849,
-    2863,
-    2854
+    846,
+    2360,
+    1343,
+    1855
   ],
   "records": [
     {
@@ -13,52 +13,52 @@
       "key": "PSELS7ZT",
       "size": "small",
       "bytes": 227651,
-      "firstPageMs": 840,
+      "firstPageMs": 846,
       "backingWidth": 954,
       "backingHeight": 1234,
       "cssWidth": 318,
       "cssHeight": 412,
       "dpr": 3,
-      "at": "2026-09-06T19:23:19.841Z"
+      "at": "2026-09-06T19:38:28.700Z"
     },
     {
       "project": "mobile",
       "key": "PAS2TSBP",
       "size": "medium",
       "bytes": 2705358,
-      "firstPageMs": 1849,
+      "firstPageMs": 2360,
       "backingWidth": 954,
       "backingHeight": 1234,
       "cssWidth": 318,
       "cssHeight": 412,
       "dpr": 3,
-      "at": "2026-09-06T19:23:24.997Z"
+      "at": "2026-09-06T19:38:34.614Z"
     },
     {
       "project": "mobile",
       "key": "MUZIM3FK",
       "size": "linearized",
       "bytes": 1895106,
-      "firstPageMs": 2863,
+      "firstPageMs": 1343,
       "backingWidth": 954,
       "backingHeight": 1234,
       "cssWidth": 318,
       "cssHeight": 412,
       "dpr": 3,
-      "at": "2026-09-06T19:23:32.272Z"
+      "at": "2026-09-06T19:38:37.753Z"
     },
     {
       "project": "mobile",
       "key": "3FYGRVK7",
       "size": "large",
       "bytes": 5568857,
-      "firstPageMs": 2854,
+      "firstPageMs": 1855,
       "backingWidth": 954,
       "backingHeight": 1234,
       "cssWidth": 318,
       "cssHeight": 412,
       "dpr": 3,
-      "at": "2026-09-06T19:23:39.363Z"
+      "at": "2026-09-06T19:38:43.872Z"
     }
   ]
 }

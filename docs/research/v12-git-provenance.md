@@ -124,4 +124,6 @@ The tree above was the pre-push snapshot. The dedicated public repository now ex
 - `42cf3a6`: https://github.com/rainhuang0220/wePaper/commit/42cf3a6020a22d8aa27cadca2e1f4ef5c2a6e932
 - `0ee7e3d`: https://github.com/rainhuang0220/wePaper/commit/0ee7e3dce9c44fe2d7d61d0ce8614700d573b0bb
 - `v1.2.0`: https://github.com/rainhuang0220/wePaper/releases/tag/v1.2.0
+- `v1.2.1`: https://github.com/rainhuang0220/wePaper/releases/tag/v1.2.1
+- `v1.2.2`: first-page Range transport + persist-after-paint (this commit)
 

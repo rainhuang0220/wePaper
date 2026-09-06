@@ -45,4 +45,4 @@ MISSION: wePaper V1.2 performance / fidelity / release
 - Started V1.2: 2026-09-07
 - Canonical URL: https://wepaper.plainlist.space
 - Repo: https://github.com/rainhuang0220/wePaper
-- Adversarial review HIGH/MEDIUM fixed in v1.2.1: linearized serve copies + Range-only first page, 304, Cache API warm, 32M canvas cap, isolated P50/P95 asserts
+- Adversarial review HIGH/MEDIUM fixed in v1.2.1 (linearize/304/32M/e2e) and v1.2.2 (256 KiB range transport + persist-after-paint). Real-IP isolated cold P50/P95 meet the gate.
