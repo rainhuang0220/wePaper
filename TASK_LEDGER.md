@@ -1,76 +1,71 @@
 # TASK_LEDGER
 
-MISSION: mobile inline PDF adaptation + reading status
+MISSION: mobile recovery + status redesign + paper discussions
 
 - [x] Load execution Skills
-- [x] Restore canonical title links to /paper/:id
-- [x] Implement robust mobile detection
-- [x] Add caching/Vary correctness
-- [x] Preserve desktop redirect to /pdf
-- [x] Add mobile viewer route/surface
-- [x] Reintroduce official PDF.js viewer dependency only as needed
-- [x] Lazy-load mobile viewer
-- [x] Keep old custom reader deleted
-- [x] Preserve raw /pdf endpoint
-- [x] Mobile fit-width UX
-- [x] Mobile continuous scroll
-- [x] Mobile search
-- [x] Mobile text selection
-- [x] Mobile zoom
-- [x] Orientation resize
-- [x] Desktop Chrome regression
-- [x] Desktop Safari regression (NOT TESTED — no Safari/WebKit automation)
-- [x] Mobile Chromium E2E
-- [x] iOS Safari test if actually available (NOT TESTED — no real iOS device)
-- [x] Raw PDF direct-link regression
-- [x] Browser Back desktop
-- [x] Browser Back mobile
-- [x] Performance benchmark
-- [x] Security regression
-- [x] Zotero regression
-- [x] Mobile UX reviewer
-- [x] Production reviewer
-- [x] Fix HIGH/MEDIUM findings
-- [x] Add reading_status schema/model
-- [x] Add DB migration
-- [x] Preserve status across Zotero reconciliation
-- [x] Add secure owner-write API
-- [x] Reject public status writes
-- [x] Display reading status in catalog
-- [x] Implement GitHub-like compact status UI
-- [x] Add quick status selector
-- [x] Add clear/no-status option
-- [x] Add status filtering
-- [x] Combine search + status filtering
-- [x] Desktop interaction test
-- [x] Mobile interaction test
-- [x] Prevent click propagation into paper open
-- [x] Zotero status-preservation regression
-- [x] Product UX review
-- [x] Public production verification
-- [x] Deploy production
-- [x] Public desktop verification
-- [x] Public mobile verification
-- [x] Push main
-- [x] Tag release
-- [x] GitHub Release
-- [x] Production == release commit
-- [x] Final clean git status
+- [x] Spawn Android investigator
+- [ ] Spawn mobile visual reviewer
+- [ ] Spawn discussion reviewer
+- [ ] Immediately remove broken mobile production viewer
+- [ ] Verify public mobile fallback works
+- [ ] Record recovery production commit
+- [ ] Audit all production reading statuses
+- [ ] Clear all fake/test statuses
+- [ ] Verify public catalog starts with no fake status
+- [ ] Prevent production test-status pollution
+- [ ] Create isolated Android environment
+- [ ] Reproduce Android PDF failure
+- [ ] Capture exact root cause
+- [ ] Write android-reader-failure.md
+- [ ] Implement Android inline fix OR choose raw-PDF fallback
+- [ ] Freeze desktop PDF path
+- [ ] Redesign status label
+- [ ] Redesign status selector
+- [ ] Redesign status filtering
+- [ ] Mobile responsive catalog pass
+- [ ] Add comments schema migration
+- [ ] Add replies
+- [ ] Add likes
+- [ ] Add comment count to catalog API
+- [ ] Add desktop Comments · N affordance
+- [ ] Add mobile title long-press discussion entry
+- [ ] Prevent long-press from opening paper
+- [ ] Build discussion route/surface
+- [ ] Build comment composer
+- [ ] Build reply UI
+- [ ] Build like UI
+- [ ] Add empty state
+- [ ] Add navigation/back behavior
+- [ ] Add test-data isolation
+- [ ] Desktop E2E
+- [ ] Mobile E2E
+- [ ] Android reading verification
+- [ ] Discussion E2E
+- [ ] Status E2E
+- [ ] Zotero preservation regression
+- [ ] Security regression
+- [ ] Performance regression
+- [ ] Capture desktop screenshots
+- [ ] Capture mobile screenshots
+- [ ] Run visual reviewers
+- [ ] Fix HIGH/MEDIUM findings
+- [ ] Ensure production contains no test statuses/comments
+- [ ] Deploy final production
+- [ ] Public desktop verification
+- [ ] Public Android/fallback verification
+- [ ] Public comments verification without leaving test junk
+- [ ] Push main
+- [ ] Create tag
+- [ ] Create GitHub Release
+- [ ] Verify production == release commit
+- [ ] Final clean git status
 
 ## Notes
 
 - Canonical URL: https://wepaper.plainlist.space
 - Repo: https://github.com/rainhuang0220/wePaper
-- Previous: v1.4.0 / `63cd9775932ca8021d27a4610825299e537f78ad`
-- This release: v1.5.0 — DesktopNativePdf + MobilePaperViewer + reading_status
-- Policy: only `/paper/:id` is device-aware. `/paper/:id/pdf` is always raw `application/pdf`.
-- Reading status is wePaper-owned. Zotero upsert must not overwrite it.
-- Hidden papers that later reappear with the same `zotero_item_key` keep their reading status.
-- Desktop Safari and iOS Safari: NOT TESTED. Do not invent PASS.
-
-## Seams (TDD)
-
-- `wepaper.device.reading_surface(headers) -> "native_pdf" | "mobile_viewer"`
-- `wepaper.reading_status.parse / labels / filter_clause`
-- `PATCH /api/v1/papers/:id/status` (owner cookie)
-- Public `GET /api/v1/papers` includes `reading_status`
+- Broken release: v1.5.0 / `4bdc8b47c3f37c4028388323211f1eb9afdbe414`
+- Policy: `/paper/:id/pdf` is always raw `application/pdf`. Desktop PDF is frozen (native).
+- Recovery: mobile `/paper/:id` must not serve the broken inline viewer.
+- Reading status and comments are open writes. No account system.
+- Automated tests must never mutate real production papers.

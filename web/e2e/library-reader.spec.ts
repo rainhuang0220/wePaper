@@ -55,48 +55,37 @@ test("desktop title click opens native PDF and back returns to library", async (
   expect(redirected.headers()["vary"] || "").toMatch(/User-Agent/i);
 });
 
-test("mobile title tap opens inline viewer without a download prompt", async ({ page, request }, info) => {
-  test.skip(info.project.name !== "mobile", "mobile inline viewer");
-  const downloads: string[] = [];
-  page.on("download", (download) => downloads.push(download.url()));
+test("mobile title tap follows raw PDF fallback, never the dead viewer", async ({ page, request }, info) => {
+  test.skip(info.project.name !== "mobile", "mobile raw PDF fallback");
 
   await page.goto("/");
   await page.getByLabel("Search papers").fill("memory");
   const target = page.locator(`ol.rows a.row-open[href$="/paper/${KEY}"]`);
   await expect(target).toBeVisible();
-  await target.click();
 
-  await expect(page).toHaveURL(new RegExp(`/paper/${KEY}$`));
-  await expect(page.getByRole("link", { name: /Library/ })).toBeVisible();
-  await expect(page.locator('.reader-scroll[data-first-ready="true"]')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.page[data-page-number="1"] canvas').first()).toBeVisible();
-  expect(downloads).toEqual([]);
+  const [pdfResponse] = await Promise.all([
+    page.waitForResponse((res) => isPdfResponse(res, KEY), { timeout: 30_000 }),
+    target.click(),
+  ]);
+  expect(pdfResponse.url()).toMatch(new RegExp(`/paper/${KEY}/pdf`));
+  expect(pdfResponse.headers()["content-type"] || "").toMatch(/application\/pdf/);
+  await expect(page.locator(".reader-scroll")).toHaveCount(0);
 
-  const pageThree = page.locator('.page[data-page-number="3"]');
-  await pageThree.evaluate((el) => el.scrollIntoView({ block: "start" }));
-  await expect(pageThree).toBeVisible();
-
-  await page.getByRole("button", { name: "More actions" }).click();
-  await page.getByRole("menuitem", { name: "Find in document" }).click();
-  await page.getByLabel("Find").fill("the");
-  await page.getByLabel("Find").press("Enter");
-  await expect(page.locator(".find-count")).not.toHaveText("", { timeout: 15_000 });
-
-  await page.getByRole("button", { name: "More actions" }).click();
-  await page.getByRole("menuitem", { name: "Zoom in" }).click();
-
-  await page.getByRole("link", { name: /Library/ }).click();
-  await expect(page).toHaveURL(/\/(\?.*)?$/);
-
-  await page.goto(PAPER_PATH);
-  await expect(page.locator('.page[data-page-number="1"] canvas').first()).toBeVisible({ timeout: 30_000 });
-  await page.goBack();
-  await expect(page).toHaveURL(/\/(\?.*)?$/);
+  const redirected = await request.get(PAPER_PATH, {
+    maxRedirects: 0,
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
+      "Sec-CH-UA-Mobile": "?1",
+    },
+  });
+  expect(redirected.status()).toBe(302);
+  expect(redirected.headers()["location"] || "").toMatch(new RegExp(`/paper/${KEY}/pdf$`));
 
   const raw = await request.get(PDF_PATH, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36",
       "Sec-CH-UA-Mobile": "?1",
     },
   });

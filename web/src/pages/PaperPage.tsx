@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { fetchPaper, pdfUrl } from "../api";
 import { MobilePaperViewer } from "../MobilePaperViewer";
 
@@ -20,10 +20,19 @@ function Shell({ message }: { message: string }) {
 
 export function PaperPage() {
   const { id = "" } = useParams();
+  const location = useLocation();
   const [title, setTitle] = useState("");
   const [error, setError] = useState("");
+  const explicitViewer = location.pathname.endsWith("/viewer");
 
   useEffect(() => {
+    if (!explicitViewer && id) {
+      window.location.replace(pdfUrl(id));
+    }
+  }, [explicitViewer, id]);
+
+  useEffect(() => {
+    if (!explicitViewer) return;
     setTitle("");
     setError("");
     fetchPaper(id)
@@ -32,7 +41,7 @@ export function PaperPage() {
         if (!next.has_pdf) setError("No PDF attached.");
       })
       .catch((err: Error) => setError(err.message));
-  }, [id]);
+  }, [explicitViewer, id]);
 
   useEffect(() => {
     document.title = title ? `${title} · wePaper` : "wePaper";
@@ -40,6 +49,10 @@ export function PaperPage() {
       document.title = "wePaper";
     };
   }, [title]);
+
+  if (!explicitViewer) {
+    return <p className="note">Opening…</p>;
+  }
 
   if (error) return <Shell message={error === "Paper not found" ? "This paper is not available." : error} />;
 

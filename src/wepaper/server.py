@@ -19,7 +19,6 @@ from pydantic import BaseModel, Field
 
 from wepaper.checksum import sha256_bytes, verify_checksum
 from wepaper.db import connect, migrate, utcnow
-from wepaper.device import wants_mobile_viewer
 from wepaper.linearize import ensure_linearized, linearized_path
 from wepaper.owner import COOKIE_NAME, issue_session, password_matches, session_valid
 from wepaper.reading_status import filter_values, parse_reading_status
@@ -296,8 +295,9 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="not found")
-        if wants_mobile_viewer(request.headers):
-            return spa_html()
+        # Recovery: every client, including Android, gets raw PDF. The HTML
+        # mobile viewer stays available only at /paper/:id/viewer for local
+        # investigation. Do not serve it as the default reading path.
         return RedirectResponse(url=f"/paper/{key}/pdf", status_code=302, headers=DEVICE_ROUTE_HEADERS)
 
     @app.post("/api/v1/owner/login")

@@ -1,15 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { fetchOwnerSession, fetchPapers, paperUrl, patchPaperStatus, type Paper } from "../api";
-import { prefersMobileViewer } from "../device";
 import { FILTERS, type ReadingStatus } from "../readingStatus";
 import { StatusChip } from "../StatusChip";
-
-if (prefersMobileViewer()) {
-  void import("./PaperPage").then((mod) => {
-    mod.prefetchPdfRuntime();
-  });
-}
 
 function addedLabel(value: string | null): string {
   if (!value) return "";
@@ -191,13 +184,6 @@ export function LibraryPage() {
 
 function PaperTitle({ paper }: { paper: Paper }) {
   const title = paper.venue ? `${paper.title} — ${paper.venue}` : paper.title;
-  if (prefersMobileViewer()) {
-    return (
-      <Link className="row-open" to={`/paper/${paper.zotero_item_key}`} title={title}>
-        <h2>{paper.title}</h2>
-      </Link>
-    );
-  }
   return (
     <a className="row-open" href={paperUrl(paper.zotero_item_key)} title={title}>
       <h2>{paper.title}</h2>

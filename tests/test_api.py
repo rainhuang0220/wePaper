@@ -228,32 +228,35 @@ def test_paper_html_route_redirects_desktop_to_native_pdf(tmp_path: Path) -> Non
     assert invalid.status_code == 404
 
 
-def test_paper_html_route_serves_mobile_viewer_not_pdf(tmp_path: Path) -> None:
+ANDROID_UA = (
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
+)
+
+
+def test_paper_html_route_redirects_mobile_to_native_pdf(tmp_path: Path) -> None:
     client = make_client(tmp_path)
     _ingest_paper(client)
     _upload_pdf(client)
 
-    mobile = client.get("/paper/C8TQ6QR5", headers={"User-Agent": IPHONE_UA}, follow_redirects=False)
-    assert mobile.status_code == 200
-    assert "text/html" in mobile.headers.get("content-type", "")
-    assert not mobile.content.startswith(b"%PDF")
-    _assert_device_routing_headers(mobile)
-    assets = Path(__file__).resolve().parents[1] / "web" / "dist" / "assets"
-    if next(assets.glob("PaperPage-*.js"), None):
-        assert b'rel="modulepreload"' in mobile.content
-        assert b"PaperPage-" in mobile.content
-    if next(assets.glob("pdf.worker*.mjs"), None):
-        assert b"pdf.worker" in mobile.content
+    for headers in (
+        {"User-Agent": IPHONE_UA},
+        {"User-Agent": ANDROID_UA},
+        {"User-Agent": DESKTOP_UA, "Sec-CH-UA-Mobile": "?1"},
+    ):
+        mobile = client.get("/paper/C8TQ6QR5", headers=headers, follow_redirects=False)
+        assert mobile.status_code == 302
+        assert mobile.headers["location"].endswith("/paper/C8TQ6QR5/pdf")
+        _assert_device_routing_headers(mobile)
+        assert "text/html" not in mobile.headers.get("content-type", "")
+        assert not mobile.content.startswith(b"%PDF")
 
-    hinted = client.get(
-        "/paper/C8TQ6QR5",
-        headers={"User-Agent": DESKTOP_UA, "Sec-CH-UA-Mobile": "?1"},
-        follow_redirects=False,
-    )
-    assert hinted.status_code == 200
-    assert "text/html" in hinted.headers.get("content-type", "")
+    followed = client.get("/paper/C8TQ6QR5", headers={"User-Agent": ANDROID_UA}, follow_redirects=True)
+    assert followed.status_code == 200
+    assert followed.headers["content-type"].startswith("application/pdf")
+    assert followed.content.startswith(b"%PDF")
 
-    explicit = client.get("/paper/C8TQ6QR5/viewer", headers={"User-Agent": DESKTOP_UA}, follow_redirects=False)
+    explicit = client.get("/paper/C8TQ6QR5/viewer", headers={"User-Agent": ANDROID_UA}, follow_redirects=False)
     assert explicit.status_code == 200
     assert "text/html" in explicit.headers.get("content-type", "")
 

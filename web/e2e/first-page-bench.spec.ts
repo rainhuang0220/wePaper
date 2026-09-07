@@ -56,33 +56,14 @@ async function clickTitleOpensNativePdf(page: Page, key: string): Promise<number
   return Date.now() - started;
 }
 
-async function clickTitleOpensMobileViewer(page: Page, key: string): Promise<number> {
-  const row = page.locator(`a.row-open[href$="/paper/${key}"]`);
-  await expect(row).toBeVisible();
-  const started = Date.now();
-  await row.click();
-  await expect(page.locator('.reader-scroll[data-first-ready="true"] .page[data-page-number="1"] canvas')).toBeVisible({
-    timeout: 20_000,
-  });
-  const canvas = page.locator('.page[data-page-number="1"] canvas').first();
-  await expect.poll(async () => canvas.evaluate((node) => (node as HTMLCanvasElement).width)).toBeGreaterThan(0);
-  return Date.now() - started;
-}
-
 test("isolated cold catalog clicks meet the first-page gate", async ({ browser }, info) => {
   const mobile = info.project.name === "mobile";
   const records: object[] = [];
   const samples: number[] = [];
   for (const paper of PAPERS) {
     const { context, page } = await isolatedPage(browser, info.project.use, mobile);
-    const workerWarm = mobile
-      ? page.waitForResponse((res) => res.url().includes("pdf.worker") && res.ok(), { timeout: 30_000 })
-      : Promise.resolve(null);
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    await workerWarm;
-    const firstPageMs = mobile
-      ? await clickTitleOpensMobileViewer(page, paper.key)
-      : await clickTitleOpensNativePdf(page, paper.key);
+    const firstPageMs = await clickTitleOpensNativePdf(page, paper.key);
     samples.push(firstPageMs);
     records.push({ project: info.project.name, ...paper, firstPageMs, at: new Date().toISOString() });
     await context.close();
