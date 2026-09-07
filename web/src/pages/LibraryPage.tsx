@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { fetchPapers, pdfUrl, type Paper } from "../api";
+import { fetchOwnerSession, fetchPapers, paperUrl, patchPaperStatus, type Paper } from "../api";
+import { prefersMobileViewer } from "../device";
+import { FILTERS, type ReadingStatus } from "../readingStatus";
+import { StatusChip } from "../StatusChip";
+
+if (prefersMobileViewer()) {
+  void import("./PaperPage").then((mod) => {
+    mod.prefetchPdfRuntime();
+  });
+}
 
 function addedLabel(value: string | null): string {
   if (!value) return "";
@@ -35,15 +44,21 @@ export function LibraryPage() {
   const [params, setParams] = useSearchParams();
   const query = params.get("q") ?? "";
   const sort = params.get("sort") || "added";
+  const statusFilter = params.get("status") || "all";
   const [papers, setPapers] = useState<Paper[]>([]);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [owner, setOwner] = useState(false);
+
+  useEffect(() => {
+    void fetchOwnerSession().then(setOwner);
+  }, []);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setLoading(true);
-      fetchPapers(query, sort)
+      fetchPapers(query, sort, statusFilter)
         .then((data) => {
           setPapers(data.papers);
           setTotal(data.total);
@@ -53,24 +68,34 @@ export function LibraryPage() {
         .finally(() => setLoading(false));
     }, 160);
     return () => window.clearTimeout(handle);
-  }, [query, sort]);
+  }, [query, sort, statusFilter]);
 
-  function updateParams(next: { q?: string; sort?: string }) {
+  function updateParams(next: { q?: string; sort?: string; status?: string }) {
     const merged = new URLSearchParams(params);
     const q = next.q ?? query;
     const nextSort = next.sort ?? sort;
+    const nextStatus = next.status ?? statusFilter;
     if (q) merged.set("q", q);
     else merged.delete("q");
     if (nextSort && nextSort !== "added") merged.set("sort", nextSort);
     else merged.delete("sort");
+    if (nextStatus && nextStatus !== "all") merged.set("status", nextStatus);
+    else merged.delete("status");
     setParams(merged, { replace: true });
   }
 
-  const census = useMemo(() => {
-    if (loading && papers.length === 0) return "";
-    if (query) return `${total}`;
-    return `${total}`;
-  }, [loading, papers.length, query, total]);
+  const census = useMemo(() => `${total}`, [total]);
+
+  function changeStatus(key: string, readingStatus: ReadingStatus | null) {
+    const previous = papers;
+    setPapers((current) =>
+      current.map((paper) => (paper.zotero_item_key === key ? { ...paper, reading_status: readingStatus } : paper)),
+    );
+    void patchPaperStatus(key, readingStatus).catch(() => {
+      setPapers(previous);
+      setError("Could not update reading status");
+    });
+  }
 
   return (
     <div className="lib">
@@ -86,6 +111,20 @@ export function LibraryPage() {
           onChange={(event) => updateParams({ q: event.target.value })}
           aria-label="Search papers"
         />
+        <label className="status-filter">
+          <span className="sr-only">Filter by reading status</span>
+          <select
+            aria-label="Filter by reading status"
+            value={statusFilter}
+            onChange={(event) => updateParams({ status: event.target.value })}
+          >
+            {FILTERS.map((filter) => (
+              <option key={filter.value} value={filter.value}>
+                {filter.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <nav className="sorts" aria-label="Sort">
           {(
             [
@@ -117,30 +156,51 @@ export function LibraryPage() {
           ))}
         </ol>
       ) : papers.length === 0 ? (
-        <p className="note">{query ? "No matching papers." : "No papers published yet."}</p>
+        <p className="note">{query || statusFilter !== "all" ? "No matching papers." : "No papers published yet."}</p>
       ) : (
         <ol className="rows">
           {papers.map((paper) => (
-            <li key={paper.zotero_item_key}>
-              <a
-                className="row"
-                href={pdfUrl(paper.zotero_item_key)}
-                title={paper.venue ? `${paper.title} — ${paper.venue}` : paper.title}
-              >
-                <span className="gutter" aria-hidden="true">
-                  {paper.has_pdf ? <DocIcon /> : null}
-                </span>
-                <span className="row-main">
-                  <h2>{paper.title}</h2>
+            <li key={paper.zotero_item_key} className="row">
+              <span className="gutter" aria-hidden="true">
+                {paper.has_pdf ? <DocIcon /> : null}
+              </span>
+              <div className="row-main">
+                <PaperTitle paper={paper} />
+                <div className="row-meta">
+                  <StatusChip
+                    value={paper.reading_status}
+                    owner={owner}
+                    onChange={(next) => changeStatus(paper.zotero_item_key, next)}
+                    onFilter={(next) => updateParams({ status: next })}
+                  />
                   <p className="authors">{secondLine(paper)}</p>
-                </span>
-                <time>{addedLabel(paper.date_added)}</time>
-              </a>
+                </div>
+              </div>
+              <time>{addedLabel(paper.date_added)}</time>
             </li>
           ))}
         </ol>
       )}
-      <footer className="colophon">Published from a private Zotero collection.</footer>
+      <footer className="colophon">
+        Published from a private Zotero collection.{" "}
+        <Link to="/owner">{owner ? "Owner signed in" : "Owner"}</Link>
+      </footer>
     </div>
+  );
+}
+
+function PaperTitle({ paper }: { paper: Paper }) {
+  const title = paper.venue ? `${paper.title} — ${paper.venue}` : paper.title;
+  if (prefersMobileViewer()) {
+    return (
+      <Link className="row-open" to={`/paper/${paper.zotero_item_key}`} title={title}>
+        <h2>{paper.title}</h2>
+      </Link>
+    );
+  }
+  return (
+    <a className="row-open" href={paperUrl(paper.zotero_item_key)} title={title}>
+      <h2>{paper.title}</h2>
+    </a>
   );
 }

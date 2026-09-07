@@ -15,20 +15,22 @@ Zotero on your Mac
 wepaper sync / daemon
       │  HTTPS + bearer token
       ▼
-wePaper server  →  public list  →  browser-native PDF
+wePaper server  →  public list  →  desktop native PDF / mobile web viewer
 ```
 
 ## Features
 
 - Sync a chosen Zotero collection without writing `zotero.sqlite`
 - Public catalog as a dense list (title, authors, year)
-- Click a title to open the real PDF in the browser’s native viewer
-- `/paper/:id` redirects to `/paper/:id/pdf`
+- Desktop: click a title → `/paper/:id` → native `/paper/:id/pdf`
+- Mobile: tap a title → `/paper/:id` inline Mozilla PDF.js viewer
+- `/paper/:id/pdf` is always the real PDF (Range / 206)
+- Owner reading-status labels (待泛读 … 已精读) with catalog filters
 - Byte-range PDF transport (`application/pdf`, Range / 206)
 
 ## Screenshots
 
-![Library](docs/screenshots/v14-library-desktop.png)
+![Library](docs/screenshots/v15-library-desktop.png)
 
 ## Requirements
 
@@ -79,6 +81,7 @@ See [docs/deployment.md](docs/deployment.md). Production origin is `https://wepa
 
 - Public read, bearer-authenticated write
 - `WEPAPER_SYNC_TOKEN` must not appear in the frontend, git, or `VITE_*` variables
+- Reading-status writes use an httpOnly owner cookie (`/owner`); the password stays on the server
 - `/openapi.json` is disabled; CSP + `X-Frame-Options: DENY`
 - Blob keys are `{sha256}.pdf`; traversal is rejected; upload size is capped
 - Visibility: `#wepaper:private` hides list + PDF; collection removal hides
@@ -92,7 +95,7 @@ cd web && npm run e2e
 
 ## Reader architecture
 
-The server stores real PDF blobs and serves them as `application/pdf` with byte ranges. Clicking a paper title navigates to `/paper/:id/pdf`. The browser’s native PDF viewer is the default reading experience. Bookmarked `/paper/:id` URLs redirect there. There is no in-app PDF.js viewer.
+The server stores real PDF blobs and serves them as `application/pdf` with byte ranges. `/paper/:id` is device-aware: desktop 302s to `/paper/:id/pdf` (browser-native PDF); mobile serves the lazy official Mozilla PDF.js viewer. `/paper/:id/pdf` stays raw PDF on every device. The old custom canvas reader is gone.
 
 ## License
 

@@ -38,15 +38,24 @@ if [ ! -f .env ]; then
     echo 'WEPAPER_PORT=8788'
     echo 'WEPAPER_PUBLIC_URL=https://wepaper.plainlist.space'
     echo "WEPAPER_SYNC_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+    echo "WEPAPER_OWNER_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')"
   } > .env
   echo 'created .env'
 else
   grep -v '^WEPAPER_PUBLIC_URL=' .env > .env.tmp || true
   echo 'WEPAPER_PUBLIC_URL=https://wepaper.plainlist.space' >> .env.tmp
+  if ! grep -q '^WEPAPER_OWNER_PASSWORD=' .env.tmp; then
+    echo "WEPAPER_OWNER_PASSWORD=$(python3 -c 'import secrets; print(secrets.token_urlsafe(18))')" >> .env.tmp
+  fi
   mv .env.tmp .env
   chmod 600 .env
 fi
 sudo cp deploy/wepaper.service /etc/systemd/system/wepaper.service
+if [ -f deploy/nginx-wepaper.plainlist.space.conf ]; then
+  sudo cp deploy/nginx-wepaper.plainlist.space.conf /www/server/panel/vhost/nginx/wepaper.plainlist.space.conf
+  sudo nginx -t
+  sudo nginx -s reload
+fi
 sudo systemctl daemon-reload
 sudo systemctl enable --now wepaper
 sudo systemctl restart wepaper

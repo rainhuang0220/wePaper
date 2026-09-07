@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS papers (
     hidden INTEGER NOT NULL DEFAULT 0,
     tombstoned INTEGER NOT NULL DEFAULT 0,
     zotero_version INTEGER NOT NULL DEFAULT 0,
+    reading_status TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -79,4 +80,12 @@ def migrate(conn: sqlite3.Connection) -> None:
         conn.execute("INSERT INTO schema_migrations(id, applied_at) VALUES (?, ?)", ("001_init", utcnow()))
     if conn.execute("SELECT 1 FROM sync_state WHERE id = 1").fetchone() is None:
         conn.execute("INSERT INTO sync_state(id, library_version) VALUES (1, 0)")
+    if "002_reading_status" not in applied:
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(papers)")}
+        if "reading_status" not in columns:
+            conn.execute("ALTER TABLE papers ADD COLUMN reading_status TEXT")
+        conn.execute(
+            "INSERT INTO schema_migrations(id, applied_at) VALUES (?, ?)",
+            ("002_reading_status", utcnow()),
+        )
     conn.commit()

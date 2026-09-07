@@ -20,7 +20,13 @@ REPLACED_PDF = MINIMAL_PDF + b"\n%rev2\n"
 
 
 def _harness(tmp_path: Path):
-    app = create_app({"WEPAPER_DATA_DIR": str(tmp_path / "server"), "WEPAPER_SYNC_TOKEN": "secret-token"})
+    app = create_app(
+        {
+            "WEPAPER_DATA_DIR": str(tmp_path / "server"),
+            "WEPAPER_SYNC_TOKEN": "secret-token",
+            "WEPAPER_OWNER_PASSWORD": "owner-secret",
+        }
+    )
     http = TestClient(app)
     remote = ServerClient("", "secret-token", client=http)
     zotero = FakeZotero()
@@ -61,6 +67,46 @@ def test_add_one_and_several(tmp_path: Path) -> None:
     pdf_res = http.get("/api/v1/papers/ITEM0001/pdf")
     assert pdf_res.status_code == 200
     assert pdf_res.content.startswith(b"%PDF")
+
+
+def test_reading_status_survives_zotero_metadata_and_pdf_replace(tmp_path: Path) -> None:
+    zotero, remote, config, http, pdf = _harness(tmp_path)
+    zotero.add_pdf(item_key="ITEM0001", title="Old title", pdf_path=pdf, attachment_key="ATT00001", version=1)
+    run_sync(source=zotero, remote=remote, config=config)
+    login = http.post("/api/v1/owner/login", json={"password": "owner-secret"})
+    assert login.status_code == 200
+    patched = http.patch("/api/v1/papers/ITEM0001/status", json={"reading_status": "pending_deep"})
+    assert patched.status_code == 200
+    zotero.papers["ITEM0001"].record.title = "New title"
+    zotero.papers["ITEM0001"].state.title = "New title"
+    zotero.papers["ITEM0001"].state.version = 2
+    zotero.papers["ITEM0001"].record.zotero_version = 2
+    run_sync(source=zotero, remote=remote, config=config)
+    paper = http.get("/api/v1/papers/ITEM0001").json()
+    assert paper["title"] == "New title"
+    assert paper["reading_status"] == "pending_deep"
+    replaced = tmp_path / "replaced.pdf"
+    replaced.write_bytes(REPLACED_PDF)
+    zotero.add_pdf(item_key="ITEM0001", title="New title", pdf_path=replaced, attachment_key="ATT00001", version=3)
+    run_sync(source=zotero, remote=remote, config=config)
+    again = http.get("/api/v1/papers/ITEM0001").json()
+    assert again["reading_status"] == "pending_deep"
+    assert http.get("/api/v1/papers/ITEM0001/pdf").content.endswith(b"%rev2\n")
+
+
+def test_reading_status_survives_hide_and_reappear(tmp_path: Path) -> None:
+    zotero, remote, config, http, pdf = _harness(tmp_path)
+    zotero.add_pdf(item_key="ITEM0001", title="Keep status", pdf_path=pdf, attachment_key="ATT00001")
+    run_sync(source=zotero, remote=remote, config=config)
+    assert http.post("/api/v1/owner/login", json={"password": "owner-secret"}).status_code == 200
+    assert http.patch("/api/v1/papers/ITEM0001/status", json={"reading_status": "deep_reading"}).status_code == 200
+    zotero.remove("ITEM0001")
+    run_sync(source=zotero, remote=remote, config=config)
+    assert http.get("/api/v1/papers/ITEM0001").status_code == 404
+    zotero.add_pdf(item_key="ITEM0001", title="Keep status", pdf_path=pdf, attachment_key="ATT00001", version=2)
+    run_sync(source=zotero, remote=remote, config=config)
+    paper = http.get("/api/v1/papers/ITEM0001").json()
+    assert paper["reading_status"] == "deep_reading"
 
 
 def test_update_metadata_and_replace_pdf(tmp_path: Path) -> None:

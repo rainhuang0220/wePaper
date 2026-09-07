@@ -20,22 +20,26 @@ function percentile(values: number[], p: number): number {
 
 async function isolatedPage(
   browser: Browser,
-  projectUse: { baseURL?: string; viewport?: { width: number; height: number } },
+  projectUse: { baseURL?: string; viewport?: { width: number; height: number }; userAgent?: string },
+  mobile: boolean,
 ) {
-  const mobile = Boolean(projectUse.viewport && projectUse.viewport.width < 500);
   const context = await browser.newContext({
     baseURL: projectUse.baseURL,
     viewport: projectUse.viewport,
     deviceScaleFactor: mobile ? 3 : 2,
+    userAgent: projectUse.userAgent,
+    extraHTTPHeaders: mobile ? { "Sec-CH-UA-Mobile": "?1" } : { "Sec-CH-UA-Mobile": "?0" },
   });
   const page = await context.newPage();
-  const session = await context.newCDPSession(page);
-  await session.send("Network.setCacheDisabled", { cacheDisabled: true });
+  if (!mobile) {
+    const session = await context.newCDPSession(page);
+    await session.send("Network.setCacheDisabled", { cacheDisabled: true });
+  }
   return { context, page };
 }
 
 async function clickTitleOpensNativePdf(page: Page, key: string): Promise<number> {
-  const row = page.locator(`a.row[href$="/paper/${key}/pdf"]`);
+  const row = page.locator(`a.row-open[href$="/paper/${key}"]`);
   await expect(row).toBeVisible();
   const started = Date.now();
   const [response] = await Promise.all([
@@ -52,13 +56,33 @@ async function clickTitleOpensNativePdf(page: Page, key: string): Promise<number
   return Date.now() - started;
 }
 
-test("isolated cold catalog clicks open native PDF within the gate", async ({ browser }, info) => {
+async function clickTitleOpensMobileViewer(page: Page, key: string): Promise<number> {
+  const row = page.locator(`a.row-open[href$="/paper/${key}"]`);
+  await expect(row).toBeVisible();
+  const started = Date.now();
+  await row.click();
+  await expect(page.locator('.reader-scroll[data-first-ready="true"] .page[data-page-number="1"] canvas')).toBeVisible({
+    timeout: 20_000,
+  });
+  const canvas = page.locator('.page[data-page-number="1"] canvas').first();
+  await expect.poll(async () => canvas.evaluate((node) => (node as HTMLCanvasElement).width)).toBeGreaterThan(0);
+  return Date.now() - started;
+}
+
+test("isolated cold catalog clicks meet the first-page gate", async ({ browser }, info) => {
+  const mobile = info.project.name === "mobile";
   const records: object[] = [];
   const samples: number[] = [];
   for (const paper of PAPERS) {
-    const { context, page } = await isolatedPage(browser, info.project.use);
+    const { context, page } = await isolatedPage(browser, info.project.use, mobile);
+    const workerWarm = mobile
+      ? page.waitForResponse((res) => res.url().includes("pdf.worker") && res.ok(), { timeout: 30_000 })
+      : Promise.resolve(null);
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    const firstPageMs = await clickTitleOpensNativePdf(page, paper.key);
+    await workerWarm;
+    const firstPageMs = mobile
+      ? await clickTitleOpensMobileViewer(page, paper.key)
+      : await clickTitleOpensNativePdf(page, paper.key);
     samples.push(firstPageMs);
     records.push({ project: info.project.name, ...paper, firstPageMs, at: new Date().toISOString() });
     await context.close();
@@ -67,7 +91,7 @@ test("isolated cold catalog clicks open native PDF within the gate", async ({ br
   const p50 = percentile(samples, 50);
   const p95 = percentile(samples, 95);
   writeFileSync(
-    path.join(resultsDir, `v14-bench-click-${info.project.name}.json`),
+    path.join(resultsDir, `v15-bench-click-${info.project.name}.json`),
     `${JSON.stringify({ p50, p95, samples, records }, null, 2)}\n`,
   );
   expect(p50, `P50 ${p50}ms`).toBeLessThanOrEqual(2000);
@@ -85,7 +109,7 @@ test("warm second Range of a medium PDF is fast", async ({ request }) => {
   expect([200, 206]).toContain(second.status());
   expect(second.headers()["content-type"] || "").toMatch(/application\/pdf/);
   writeFileSync(
-    path.join(resultsDir, "v14-bench-warm-medium.json"),
+    path.join(resultsDir, "v15-bench-warm-medium.json"),
     `${JSON.stringify({ warmMs, at: new Date().toISOString() }, null, 2)}\n`,
   );
   expect(warmMs, `warm ${warmMs}ms`).toBeLessThan(3000);

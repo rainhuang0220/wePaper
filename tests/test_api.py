@@ -15,11 +15,24 @@ trailer<<>>
 """
 
 
-def make_client(tmp_path: Path, token: str = "secret-token") -> TestClient:
+DESKTOP_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+)
+IPHONE_UA = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) "
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"
+)
+
+
+def make_client(
+    tmp_path: Path, token: str = "secret-token", owner_password: str = "owner-secret"
+) -> TestClient:
     app = create_app(
         {
             "WEPAPER_DATA_DIR": str(tmp_path),
             "WEPAPER_SYNC_TOKEN": token,
+            "WEPAPER_OWNER_PASSWORD": owner_password,
             "WEPAPER_MAX_UPLOAD_BYTES": str(2 * 1024 * 1024),
         }
     )
@@ -171,34 +184,165 @@ def test_upload_pdf_and_range(tmp_path: Path) -> None:
     assert alias_range.headers["content-type"].startswith("application/pdf")
 
 
-def test_paper_html_route_redirects_to_native_pdf(tmp_path: Path) -> None:
-    client = make_client(tmp_path)
-    _ingest_paper(client)
+def _upload_pdf(client: TestClient, item_key: str = "C8TQ6QR5") -> None:
     upload = client.put(
         "/api/v1/sync/attachments/LCYIEFND",
-        headers={**auth(), "X-Wepaper-Item-Key": "C8TQ6QR5", "X-Wepaper-Filename": "paper.pdf"},
+        headers={**auth(), "X-Wepaper-Item-Key": item_key, "X-Wepaper-Filename": "paper.pdf"},
         files={"file": ("paper.pdf", MINIMAL_PDF, "application/pdf")},
     )
     assert upload.status_code in {200, 201}
 
-    redirect = client.get("/paper/C8TQ6QR5", follow_redirects=False)
+
+def _assert_device_routing_headers(res) -> None:
+    cache = res.headers.get("cache-control", "").lower()
+    vary = res.headers.get("vary", "").lower()
+    assert "no-store" in cache
+    assert "sec-ch-ua-mobile" in vary
+    assert "user-agent" in vary
+
+
+def test_paper_html_route_redirects_desktop_to_native_pdf(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    _ingest_paper(client)
+    _upload_pdf(client)
+
+    redirect = client.get("/paper/C8TQ6QR5", headers={"User-Agent": DESKTOP_UA}, follow_redirects=False)
     assert redirect.status_code == 302
     assert redirect.headers["location"].endswith("/paper/C8TQ6QR5/pdf")
+    _assert_device_routing_headers(redirect)
 
-    head = client.head("/paper/C8TQ6QR5", follow_redirects=False)
+    head = client.head("/paper/C8TQ6QR5", headers={"User-Agent": DESKTOP_UA}, follow_redirects=False)
     assert head.status_code == 302
     assert head.headers["location"].endswith("/paper/C8TQ6QR5/pdf")
+    _assert_device_routing_headers(head)
 
-    followed = client.get("/paper/C8TQ6QR5", follow_redirects=True)
+    followed = client.get("/paper/C8TQ6QR5", headers={"User-Agent": DESKTOP_UA}, follow_redirects=True)
     assert followed.status_code == 200
     assert followed.headers["content-type"].startswith("application/pdf")
     assert followed.content.startswith(b"%PDF")
 
-    missing = client.get("/paper/ZZZZZZZZ", follow_redirects=False)
+    missing = client.get("/paper/ZZZZZZZZ", headers={"User-Agent": DESKTOP_UA}, follow_redirects=False)
     assert missing.status_code == 404
 
     invalid = client.get("/paper/not-a-key", follow_redirects=False)
     assert invalid.status_code == 404
+
+
+def test_paper_html_route_serves_mobile_viewer_not_pdf(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    _ingest_paper(client)
+    _upload_pdf(client)
+
+    mobile = client.get("/paper/C8TQ6QR5", headers={"User-Agent": IPHONE_UA}, follow_redirects=False)
+    assert mobile.status_code == 200
+    assert "text/html" in mobile.headers.get("content-type", "")
+    assert not mobile.content.startswith(b"%PDF")
+    _assert_device_routing_headers(mobile)
+    assets = Path(__file__).resolve().parents[1] / "web" / "dist" / "assets"
+    if next(assets.glob("PaperPage-*.js"), None):
+        assert b'rel="modulepreload"' in mobile.content
+        assert b"PaperPage-" in mobile.content
+    if next(assets.glob("pdf.worker*.mjs"), None):
+        assert b"pdf.worker" in mobile.content
+
+    hinted = client.get(
+        "/paper/C8TQ6QR5",
+        headers={"User-Agent": DESKTOP_UA, "Sec-CH-UA-Mobile": "?1"},
+        follow_redirects=False,
+    )
+    assert hinted.status_code == 200
+    assert "text/html" in hinted.headers.get("content-type", "")
+
+    explicit = client.get("/paper/C8TQ6QR5/viewer", headers={"User-Agent": DESKTOP_UA}, follow_redirects=False)
+    assert explicit.status_code == 200
+    assert "text/html" in explicit.headers.get("content-type", "")
+
+    raw = client.get("/paper/C8TQ6QR5/pdf", headers={"User-Agent": IPHONE_UA})
+    assert raw.status_code == 200
+    assert raw.headers["content-type"].startswith("application/pdf")
+    assert raw.content.startswith(b"%PDF")
+    assert "no-store" not in raw.headers.get("cache-control", "")
+
+
+def test_reading_status_default_null_and_public_read(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    _ingest_paper(client)
+    listed = client.get("/api/v1/papers").json()["papers"][0]
+    assert listed["reading_status"] is None
+    detail = client.get("/api/v1/papers/C8TQ6QR5").json()
+    assert detail["reading_status"] is None
+
+
+def test_owner_can_set_clear_and_filter_reading_status(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    _ingest_paper(client, key="C8TQ6QR5", title="A-mem")
+    _ingest_paper(client, key="BBBBBBBB", title="Other")
+    assert client.patch("/api/v1/papers/C8TQ6QR5/status", json={"reading_status": "pending_deep"}).status_code == 401
+
+    bad_login = client.post("/api/v1/owner/login", json={"password": "nope"})
+    assert bad_login.status_code == 401
+
+    login = client.post("/api/v1/owner/login", json={"password": "owner-secret"})
+    assert login.status_code == 200
+    assert client.get("/api/v1/owner/session").json()["owner"] is True
+
+    for value in (
+        "pending_browse",
+        "pending_deep",
+        "browsing",
+        "deep_reading",
+        "browsed",
+        "deep_read",
+    ):
+        res = client.patch("/api/v1/papers/C8TQ6QR5/status", json={"reading_status": value})
+        assert res.status_code == 200
+        assert res.json()["reading_status"] == value
+        assert client.get("/api/v1/papers/C8TQ6QR5").json()["reading_status"] == value
+
+    assert client.patch("/api/v1/papers/C8TQ6QR5/status", json={"reading_status": "Exploring"}).status_code == 422
+    cleared = client.patch("/api/v1/papers/C8TQ6QR5/status", json={"reading_status": None})
+    assert cleared.status_code == 200
+    assert cleared.json()["reading_status"] is None
+
+    client.patch("/api/v1/papers/C8TQ6QR5/status", json={"reading_status": "pending_deep"})
+    client.patch("/api/v1/papers/BBBBBBBB/status", json={"reading_status": "browsed"})
+    found = client.get("/api/v1/papers", params={"reading_status": "pending_deep"}).json()["papers"]
+    assert [p["zotero_item_key"] for p in found] == ["C8TQ6QR5"]
+    unread = client.get("/api/v1/papers", params={"reading_status": "unread"}).json()["papers"]
+    assert [p["zotero_item_key"] for p in unread] == ["C8TQ6QR5"]
+    searched = client.get("/api/v1/papers", params={"q": "mem", "reading_status": "pending_deep"}).json()["papers"]
+    assert [p["zotero_item_key"] for p in searched] == ["C8TQ6QR5"]
+    empty = client.get("/api/v1/papers", params={"q": "other", "reading_status": "pending_deep"}).json()["papers"]
+    assert empty == []
+
+    client.post("/api/v1/owner/logout")
+    assert client.get("/api/v1/owner/session").json()["owner"] is False
+    assert client.patch("/api/v1/papers/C8TQ6QR5/status", json={"reading_status": "browsing"}).status_code == 401
+    assert client.get("/api/v1/papers/C8TQ6QR5").json()["reading_status"] == "pending_deep"
+
+
+def test_owner_cookie_is_secure_behind_https_proxy(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    login = client.post(
+        "/api/v1/owner/login",
+        json={"password": "owner-secret"},
+        headers={"X-Forwarded-Proto": "https"},
+    )
+    assert login.status_code == 200
+    cookie = login.headers.get("set-cookie", "")
+    assert "wepaper_owner=" in cookie
+    assert "Secure" in cookie
+
+
+def test_sync_token_cannot_be_used_as_browser_owner_session(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    _ingest_paper(client)
+    assert client.post("/api/v1/owner/login", json={"password": "secret-token"}).status_code == 401
+    assert client.patch(
+        "/api/v1/papers/C8TQ6QR5/status",
+        headers=auth(),
+        json={"reading_status": "pending_deep"},
+    ).status_code == 401
 
 
 def test_duplicate_upload_is_idempotent(tmp_path: Path) -> None:

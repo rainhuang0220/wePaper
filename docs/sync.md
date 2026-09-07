@@ -43,6 +43,8 @@ The agent sends `User-Agent: wePaper-Sync/0.1` and `Zotero-Allowed-Request: 1`. 
 
 A failed batch does **not** commit `library_version`. Restart resumes a full reconcile of the collection tree.
 
+Reading status is wePaper-owned. Metadata updates, PDF replacements, hide, and later reappearance of the same `zotero_item_key` preserve `reading_status`. Filename changes do not affect it.
+
 ## Visibility
 
 Collection membership makes a paper eligible. Tags:

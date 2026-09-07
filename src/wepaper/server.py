@@ -13,15 +13,24 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from wepaper.checksum import sha256_bytes, verify_checksum
 from wepaper.db import connect, migrate, utcnow
+from wepaper.device import wants_mobile_viewer
 from wepaper.linearize import ensure_linearized, linearized_path
+from wepaper.owner import COOKIE_NAME, issue_session, password_matches, session_valid
+from wepaper.reading_status import filter_values, parse_reading_status
 from wepaper.sanitize import safe_storage_name, sanitize_filename
 from wepaper.settings import Settings
+
+DEVICE_ROUTE_HEADERS = {
+    "Cache-Control": "private, no-store",
+    "Vary": "Sec-CH-UA-Mobile, User-Agent",
+    "Accept-CH": "Sec-CH-UA-Mobile",
+}
 
 log = logging.getLogger("wepaper")
 ITEM_KEY = re.compile(r"^[A-Za-z0-9]{8}$")
@@ -65,6 +74,14 @@ class SyncStateIn(BaseModel):
     zotero_server_id: str | None = None
 
 
+class OwnerLoginIn(BaseModel):
+    password: str = Field(min_length=1, max_length=200)
+
+
+class StatusIn(BaseModel):
+    reading_status: str | None = None
+
+
 def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
     settings = load_settings(overrides)
     settings.data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -93,8 +110,9 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.public_url],
-        allow_methods=["GET", "HEAD", "OPTIONS"],
-        allow_headers=["Range", "Authorization"],
+        allow_methods=["GET", "HEAD", "OPTIONS", "PATCH", "POST"],
+        allow_headers=["Range", "Authorization", "Content-Type"],
+        allow_credentials=True,
     )
     app.state.settings = settings
     app.state.db = conn
@@ -113,6 +131,34 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         if not secrets.compare_digest(provided_digest, expected_digest):
             raise HTTPException(status_code=401, detail="unauthorized")
 
+    def require_owner(request: Request) -> None:
+        if not session_valid(settings.owner_password, request.cookies.get(COOKIE_NAME)):
+            raise HTTPException(status_code=401, detail="unauthorized")
+
+    def spa_html(headers: dict[str, str] | None = None) -> FileResponse | HTMLResponse:
+        extra = {**DEVICE_ROUTE_HEADERS, **(headers or {})}
+        index = settings.web_dir / "index.html"
+        if not index.is_file():
+            return HTMLResponse("<!doctype html><title>wePaper</title><div id='root'></div>", headers=extra)
+        html = index.read_text(encoding="utf-8")
+        assets = settings.web_dir / "assets"
+        preloads: list[str] = []
+        if assets.is_dir():
+            paper_js = next(iter(sorted(assets.glob("PaperPage-*.js"))), None)
+            if paper_js:
+                preloads.append(f'<link rel="modulepreload" href="/assets/{paper_js.name}" />')
+            worker = next(iter(sorted(assets.glob("pdf.worker*.mjs"))), None)
+            if worker:
+                preloads.append(
+                    f'<link rel="preload" href="/assets/{worker.name}" as="script" crossorigin />'
+                )
+            css = next(iter(sorted(assets.glob("PaperPage-*.css"))), None)
+            if css:
+                preloads.append(f'<link rel="stylesheet" href="/assets/{css.name}" />')
+        if preloads and "</head>" in html:
+            html = html.replace("</head>", f"    {''.join(preloads)}\n  </head>")
+        return HTMLResponse(html, media_type="text/html", headers=extra)
+
     @app.exception_handler(Exception)
     async def hide_stack(request: Request, exc: Exception):
         if isinstance(exc, HTTPException):
@@ -129,6 +175,7 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
     def list_papers(
         q: str | None = None,
         collection: str | None = None,
+        reading_status: str | None = None,
         sort: str = "added",
         limit: int = Query(default=50, ge=1, le=200),
         offset: int = Query(default=0, ge=0),
@@ -138,6 +185,14 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         if collection:
             where.append("collection = ?")
             args.append(collection)
+        if reading_status:
+            try:
+                wanted = filter_values(reading_status)
+            except ValueError as exc:
+                raise HTTPException(status_code=422, detail="invalid reading status") from exc
+            if wanted:
+                where.append(f"reading_status IN ({','.join('?' * len(wanted))})")
+                args.extend(wanted)
         if q:
             where.append("(title LIKE ? OR authors LIKE ? OR venue LIKE ? OR tags_json LIKE ?)")
             like = f"%{q}%"
@@ -221,8 +276,8 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
     def public_pdf(item_key: str, request: Request) -> FileResponse | Response:
         return get_pdf(item_key, request)
 
-    @app.api_route("/paper/{item_key}", methods=["GET", "HEAD"])
-    def public_paper(item_key: str) -> RedirectResponse:
+    @app.api_route("/paper/{item_key}/viewer", methods=["GET", "HEAD"], response_model=None)
+    def public_paper_viewer(item_key: str) -> Response:
         key = _public_key(item_key)
         row = conn.execute(
             "SELECT 1 FROM papers WHERE zotero_item_key = ? AND hidden = 0 AND tombstoned = 0 AND visibility = 'public'",
@@ -230,7 +285,68 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="not found")
-        return RedirectResponse(url=f"/paper/{key}/pdf", status_code=302)
+        return spa_html()
+
+    @app.api_route("/paper/{item_key}", methods=["GET", "HEAD"], response_model=None)
+    def public_paper(item_key: str, request: Request) -> Response:
+        key = _public_key(item_key)
+        row = conn.execute(
+            "SELECT 1 FROM papers WHERE zotero_item_key = ? AND hidden = 0 AND tombstoned = 0 AND visibility = 'public'",
+            (key,),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="not found")
+        if wants_mobile_viewer(request.headers):
+            return spa_html()
+        return RedirectResponse(url=f"/paper/{key}/pdf", status_code=302, headers=DEVICE_ROUTE_HEADERS)
+
+    @app.post("/api/v1/owner/login")
+    def owner_login(body: OwnerLoginIn, request: Request) -> JSONResponse:
+        if not password_matches(settings.owner_password, body.password):
+            raise HTTPException(status_code=401, detail="unauthorized")
+        response = JSONResponse({"owner": True})
+        response.set_cookie(
+            COOKIE_NAME,
+            issue_session(settings.owner_password),
+            httponly=True,
+            samesite="lax",
+            secure=_forwarded_https(request),
+            max_age=30 * 24 * 60 * 60,
+            path="/",
+        )
+        return response
+
+    @app.post("/api/v1/owner/logout")
+    def owner_logout() -> JSONResponse:
+        response = JSONResponse({"owner": False})
+        response.delete_cookie(COOKIE_NAME, path="/")
+        return response
+
+    @app.get("/api/v1/owner/session")
+    def owner_session(request: Request) -> dict[str, bool]:
+        return {"owner": session_valid(settings.owner_password, request.cookies.get(COOKIE_NAME))}
+
+    @app.patch("/api/v1/papers/{item_key}/status")
+    def patch_paper_status(item_key: str, body: StatusIn, request: Request) -> dict[str, Any]:
+        require_owner(request)
+        try:
+            status = parse_reading_status(body.reading_status)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="invalid reading status") from exc
+        key = _public_key(item_key)
+        row = conn.execute(
+            "SELECT * FROM papers WHERE zotero_item_key = ? AND hidden = 0 AND tombstoned = 0 AND visibility = 'public'",
+            (key,),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="not found")
+        conn.execute(
+            "UPDATE papers SET reading_status = ?, updated_at = ? WHERE zotero_item_key = ?",
+            (status, utcnow(), key),
+        )
+        conn.commit()
+        updated = conn.execute("SELECT * FROM papers WHERE zotero_item_key = ?", (key,)).fetchone()
+        return _paper_json(conn, updated)
 
     @app.put("/api/v1/sync/papers")
     def upsert_paper(body: PaperIn, _: None = Depends(require_sync)) -> dict[str, str]:
@@ -443,6 +559,11 @@ def _public_key(key: str) -> str:
     return key
 
 
+def _forwarded_https(request: Request) -> bool:
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    return proto.split(",")[0].strip().lower() == "https"
+
+
 BLOB_KEY = re.compile(r"^[0-9a-f]{64}\.pdf$")
 
 
@@ -478,6 +599,7 @@ def _paper_json(
         "date_added": row["date_added"] or row["created_at"],
         "visibility": row["visibility"],
         "has_pdf": bool(atts),
+        "reading_status": row["reading_status"] if "reading_status" in row.keys() else None,
         "attachments": (
             [dict(att) for att in atts]
             if include_hidden

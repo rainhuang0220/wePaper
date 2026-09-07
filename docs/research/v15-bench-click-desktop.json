@@ -1,0 +1,44 @@
+{
+  "p50": 195,
+  "p95": 225,
+  "samples": [
+    225,
+    195,
+    204,
+    194
+  ],
+  "records": [
+    {
+      "project": "desktop",
+      "key": "PSELS7ZT",
+      "size": "small",
+      "bytes": 227651,
+      "firstPageMs": 225,
+      "at": "2026-09-07T11:20:25.372Z"
+    },
+    {
+      "project": "desktop",
+      "key": "PAS2TSBP",
+      "size": "medium",
+      "bytes": 2705358,
+      "firstPageMs": 195,
+      "at": "2026-09-07T11:20:26.424Z"
+    },
+    {
+      "project": "desktop",
+      "key": "MUZIM3FK",
+      "size": "linearized",
+      "bytes": 1895106,
+      "firstPageMs": 204,
+      "at": "2026-09-07T11:20:28.922Z"
+    },
+    {
+      "project": "desktop",
+      "key": "3FYGRVK7",
+      "size": "large",
+      "bytes": 5568857,
+      "firstPageMs": 194,
+      "at": "2026-09-07T11:20:30.061Z"
+    }
+  ]
+}
