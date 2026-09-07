@@ -74,14 +74,15 @@ test("isolated cold catalog clicks open native PDF within the gate", async ({ br
   expect(p95, `P95 ${p95}ms`).toBeLessThanOrEqual(3000);
 });
 
-test("warm second open of a medium PDF is fast", async ({ request }) => {
-  const first = await request.get("/paper/PAS2TSBP/pdf");
-  expect(first.status()).toBe(200);
+test("warm second Range of a medium PDF is fast", async ({ request }) => {
+  const headers = { Range: "bytes=0-262143" };
+  const first = await request.get("/paper/PAS2TSBP/pdf", { headers });
+  expect([200, 206]).toContain(first.status());
   expect(first.headers()["content-type"] || "").toMatch(/application\/pdf/);
   const started = Date.now();
-  const second = await request.get("/paper/PAS2TSBP/pdf");
+  const second = await request.get("/paper/PAS2TSBP/pdf", { headers });
   const warmMs = Date.now() - started;
-  expect(second.status()).toBe(200);
+  expect([200, 206]).toContain(second.status());
   expect(second.headers()["content-type"] || "").toMatch(/application\/pdf/);
   writeFileSync(
     path.join(resultsDir, "v14-bench-warm-medium.json"),

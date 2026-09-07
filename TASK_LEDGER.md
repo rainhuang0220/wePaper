@@ -19,23 +19,26 @@ MISSION: native PDF default route
 - [x] Zotero regression
 - [x] Routing/UX reviewer
 - [x] Fix HIGH/MEDIUM findings
-- [ ] Deploy production
-- [ ] Public title-click verification
-- [ ] Public direct-/paper/:id verification
+- [x] Deploy production
+- [x] Public title-click verification
+- [x] Public direct-/paper/:id verification
 - [ ] Push main
 - [ ] Create new semantic version tag
 - [ ] Create GitHub Release
 - [ ] Verify production == release commit
-- [ ] Update docs
+- [x] Update docs
 - [ ] Final clean git status
 
 ## Notes
 
 - Canonical URL: https://wepaper.plainlist.space
 - Repo: https://github.com/rainhuang0220/wePaper
-- Next version: v1.4.0
+- Version: v1.4.0
 - Decision: PDF.js in-app viewer REMOVED. Default is browser-native `/paper/:id/pdf`.
 - Routing/UX reviewer (c14546ab): PASS, HIGH/MEDIUM none
-- Local pytest: 47 passed
-- Local Playwright: 8/8 passed
-- Local click bench: desktop P50 17 ms / P95 60 ms; mobile P50 17 ms / P95 37 ms (localhost; Playwright treats PDF as download)
+- Production reviewer (ab4e0ad8): PASS
+- Public title click: `https://wepaper.plainlist.space/paper/PSELS7ZT/pdf` `application/pdf`
+- Public `/paper/PSELS7ZT` → 302 → `/paper/PSELS7ZT/pdf`
+- Public Back: PDF → library (9 rows)
+- Production JS: `index-BAGeQMXW.js` SHA-256 `2bcd17c7f833ae60cd4133842c903e9fdff848229dbfa82142e7e45254523896`
+- Public click bench: desktop P50 113 ms / P95 132 ms; mobile P50 123 ms / P95 130 ms
