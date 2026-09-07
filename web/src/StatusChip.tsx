@@ -3,12 +3,10 @@ import { LABELS, STATUSES, type ReadingStatus } from "./readingStatus";
 
 type Props = {
   value: ReadingStatus | null;
-  owner: boolean;
   onChange: (next: ReadingStatus | null) => void;
-  onFilter?: (next: ReadingStatus) => void;
 };
 
-export function StatusChip({ value, owner, onChange, onFilter }: Props) {
+export function StatusChip({ value, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -33,45 +31,38 @@ export function StatusChip({ value, owner, onChange, onFilter }: Props) {
     event.stopPropagation();
   }
 
-  if (!owner) {
-    if (!value) return null;
-    return (
-      <button
-        type="button"
-        className={`status-chip is-${value}`}
-        data-status={value}
-        aria-label={`阅读状态：${LABELS[value]}`}
-        onClick={(event) => {
-          stop(event);
-          onFilter?.(value);
-        }}
-        onPointerDown={stop}
-      >
-        {LABELS[value]}
-      </button>
-    );
-  }
-
   return (
     <div className={`status-wrap${open ? " is-open" : ""}`} ref={rootRef}>
       <button
         type="button"
-        className={`status-chip ${value ? `is-${value}` : "is-add"}`}
+        className={`status-chip ${value ? `is-${value}` : "is-empty"}`}
         data-status={value ?? ""}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={menuId}
-        aria-label={value ? `阅读状态：${LABELS[value]}` : "添加阅读状态"}
+        aria-label={value ? `阅读状态：${LABELS[value]}` : "设置阅读状态"}
         onClick={(event) => {
           stop(event);
           setOpen((next) => !next);
         }}
         onPointerDown={stop}
       >
-        {value ? LABELS[value] : "+"}
+        {value ? LABELS[value] : "状态"}
       </button>
       {open ? (
-        <div className="status-menu" id={menuId} role="menu" aria-label="Reading status">
+        <button
+          type="button"
+          className="status-scrim"
+          aria-label="关闭状态菜单"
+          onPointerDown={stop}
+          onClick={(event) => {
+            stop(event);
+            setOpen(false);
+          }}
+        />
+      ) : null}
+      {open ? (
+        <div className="status-menu" id={menuId} role="menu" aria-label="阅读状态">
           <button
             type="button"
             role="menuitemradio"
@@ -80,7 +71,7 @@ export function StatusChip({ value, owner, onChange, onFilter }: Props) {
             onClick={(event) => {
               stop(event);
               onChange(null);
-              window.setTimeout(() => setOpen(false), 160);
+              window.setTimeout(() => setOpen(false), 80);
             }}
           >
             无状态
@@ -96,7 +87,7 @@ export function StatusChip({ value, owner, onChange, onFilter }: Props) {
               onClick={(event) => {
                 stop(event);
                 onChange(status);
-                window.setTimeout(() => setOpen(false), 160);
+                window.setTimeout(() => setOpen(false), 80);
               }}
             >
               {LABELS[status]}

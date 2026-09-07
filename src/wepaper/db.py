@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -52,11 +53,24 @@ CREATE TABLE IF NOT EXISTS sync_state (
     last_success_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS paper_comments (
+    id TEXT PRIMARY KEY,
+    paper_id TEXT NOT NULL,
+    parent_id TEXT,
+    body TEXT NOT NULL,
+    display_name TEXT,
+    like_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (paper_id) REFERENCES papers(zotero_item_key),
+    FOREIGN KEY (parent_id) REFERENCES paper_comments(id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_papers_collection ON papers(collection);
 CREATE INDEX IF NOT EXISTS idx_papers_year ON papers(year);
 CREATE INDEX IF NOT EXISTS idx_papers_hidden ON papers(hidden, tombstoned, visibility);
 CREATE INDEX IF NOT EXISTS idx_attachments_paper ON attachments(paper_key);
 CREATE INDEX IF NOT EXISTS idx_attachments_checksum ON attachments(checksum);
+CREATE INDEX IF NOT EXISTS idx_comments_paper ON paper_comments(paper_id, created_at);
 """
 
 
@@ -64,13 +78,50 @@ def utcnow() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
-def connect(path: Path) -> sqlite3.Connection:
+class _Fetched:
+    def __init__(self, rows: list) -> None:
+        self._rows = rows
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
+
+    def fetchall(self):
+        return list(self._rows)
+
+    def __iter__(self):
+        return iter(self._rows)
+
+
+class LockedConnection:
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+        self._lock = threading.Lock()
+
+    def execute(self, *args, **kwargs):
+        with self._lock:
+            return _Fetched(self._conn.execute(*args, **kwargs).fetchall())
+
+    def executescript(self, script: str):
+        with self._lock:
+            self._conn.executescript(script)
+        return self
+
+    def commit(self) -> None:
+        with self._lock:
+            self._conn.commit()
+
+    def close(self) -> None:
+        with self._lock:
+            self._conn.close()
+
+
+def connect(path: Path) -> LockedConnection:
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
-    return conn
+    return LockedConnection(conn)
 
 
 def migrate(conn: sqlite3.Connection) -> None:
@@ -87,5 +138,28 @@ def migrate(conn: sqlite3.Connection) -> None:
         conn.execute(
             "INSERT INTO schema_migrations(id, applied_at) VALUES (?, ?)",
             ("002_reading_status", utcnow()),
+        )
+    if "003_paper_comments" not in applied:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS paper_comments (
+                id TEXT PRIMARY KEY,
+                paper_id TEXT NOT NULL,
+                parent_id TEXT,
+                body TEXT NOT NULL,
+                display_name TEXT,
+                like_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (paper_id) REFERENCES papers(zotero_item_key),
+                FOREIGN KEY (parent_id) REFERENCES paper_comments(id)
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_comments_paper ON paper_comments(paper_id, created_at)"
+        )
+        conn.execute(
+            "INSERT INTO schema_migrations(id, applied_at) VALUES (?, ?)",
+            ("003_paper_comments", utcnow()),
         )
     conn.commit()

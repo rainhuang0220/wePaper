@@ -18,9 +18,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from wepaper.checksum import sha256_bytes, verify_checksum
+from wepaper.comments import comment_payload, new_comment_id, parse_comment_body, parse_display_name
 from wepaper.db import connect, migrate, utcnow
 from wepaper.linearize import ensure_linearized, linearized_path
-from wepaper.owner import COOKIE_NAME, issue_session, password_matches, session_valid
 from wepaper.reading_status import filter_values, parse_reading_status
 from wepaper.sanitize import safe_storage_name, sanitize_filename
 from wepaper.settings import Settings
@@ -73,12 +73,13 @@ class SyncStateIn(BaseModel):
     zotero_server_id: str | None = None
 
 
-class OwnerLoginIn(BaseModel):
-    password: str = Field(min_length=1, max_length=200)
-
-
 class StatusIn(BaseModel):
     reading_status: str | None = None
+
+
+class CommentIn(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+    display_name: str | None = Field(default=None, max_length=80)
 
 
 def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
@@ -130,11 +131,7 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         if not secrets.compare_digest(provided_digest, expected_digest):
             raise HTTPException(status_code=401, detail="unauthorized")
 
-    def require_owner(request: Request) -> None:
-        if not session_valid(settings.owner_password, request.cookies.get(COOKIE_NAME)):
-            raise HTTPException(status_code=401, detail="unauthorized")
-
-    def spa_html(headers: dict[str, str] | None = None) -> FileResponse | HTMLResponse:
+    def spa_html(headers: dict[str, str] | None = None, preload_viewer: bool = False) -> FileResponse | HTMLResponse:
         extra = {**DEVICE_ROUTE_HEADERS, **(headers or {})}
         index = settings.web_dir / "index.html"
         if not index.is_file():
@@ -142,7 +139,7 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         html = index.read_text(encoding="utf-8")
         assets = settings.web_dir / "assets"
         preloads: list[str] = []
-        if assets.is_dir():
+        if preload_viewer and assets.is_dir():
             paper_js = next(iter(sorted(assets.glob("PaperPage-*.js"))), None)
             if paper_js:
                 preloads.append(f'<link rel="modulepreload" href="/assets/{paper_js.name}" />')
@@ -206,7 +203,14 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         total = conn.execute(
             f"SELECT COUNT(*) FROM papers WHERE {' AND '.join(where)}", args
         ).fetchone()[0]
-        return {"papers": [_paper_json(conn, row) for row in rows], "total": total}
+        counts = _comment_counts(conn, [row["zotero_item_key"] for row in rows])
+        return {
+            "papers": [
+                _paper_json(conn, row, comment_count=counts.get(row["zotero_item_key"], 0))
+                for row in rows
+            ],
+            "total": total,
+        }
 
     @app.get("/api/v1/papers/{item_key}")
     def get_paper(item_key: str) -> dict[str, Any]:
@@ -217,7 +221,8 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="not found")
-        return _paper_json(conn, row, include_abstract=True)
+        counts = _comment_counts(conn, [key])
+        return _paper_json(conn, row, include_abstract=True, comment_count=counts.get(key, 0))
 
     def _pdf_file(item_key: str) -> tuple[sqlite3.Row, Path]:
         key = _public_key(item_key)
@@ -284,7 +289,7 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         ).fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="not found")
-        return spa_html()
+        return spa_html(preload_viewer=True)
 
     @app.api_route("/paper/{item_key}", methods=["GET", "HEAD"], response_model=None)
     def public_paper(item_key: str, request: Request) -> Response:
@@ -300,35 +305,19 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         # investigation. Do not serve it as the default reading path.
         return RedirectResponse(url=f"/paper/{key}/pdf", status_code=302, headers=DEVICE_ROUTE_HEADERS)
 
-    @app.post("/api/v1/owner/login")
-    def owner_login(body: OwnerLoginIn, request: Request) -> JSONResponse:
-        if not password_matches(settings.owner_password, body.password):
-            raise HTTPException(status_code=401, detail="unauthorized")
-        response = JSONResponse({"owner": True})
-        response.set_cookie(
-            COOKIE_NAME,
-            issue_session(settings.owner_password),
-            httponly=True,
-            samesite="lax",
-            secure=_forwarded_https(request),
-            max_age=30 * 24 * 60 * 60,
-            path="/",
-        )
-        return response
-
-    @app.post("/api/v1/owner/logout")
-    def owner_logout() -> JSONResponse:
-        response = JSONResponse({"owner": False})
-        response.delete_cookie(COOKIE_NAME, path="/")
-        return response
-
-    @app.get("/api/v1/owner/session")
-    def owner_session(request: Request) -> dict[str, bool]:
-        return {"owner": session_valid(settings.owner_password, request.cookies.get(COOKIE_NAME))}
+    @app.api_route("/paper/{item_key}/discussion", methods=["GET", "HEAD"], response_model=None)
+    def public_discussion(item_key: str) -> Response:
+        key = _public_key(item_key)
+        row = conn.execute(
+            "SELECT 1 FROM papers WHERE zotero_item_key = ? AND hidden = 0 AND tombstoned = 0 AND visibility = 'public'",
+            (key,),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="not found")
+        return spa_html()
 
     @app.patch("/api/v1/papers/{item_key}/status")
-    def patch_paper_status(item_key: str, body: StatusIn, request: Request) -> dict[str, Any]:
-        require_owner(request)
+    def patch_paper_status(item_key: str, body: StatusIn) -> dict[str, Any]:
         try:
             status = parse_reading_status(body.reading_status)
         except ValueError as exc:
@@ -346,7 +335,77 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         )
         conn.commit()
         updated = conn.execute("SELECT * FROM papers WHERE zotero_item_key = ?", (key,)).fetchone()
-        return _paper_json(conn, updated)
+        counts = _comment_counts(conn, [key])
+        return _paper_json(conn, updated, comment_count=counts.get(key, 0))
+
+    def _public_paper_row(item_key: str) -> sqlite3.Row:
+        key = _public_key(item_key)
+        row = conn.execute(
+            "SELECT * FROM papers WHERE zotero_item_key = ? AND hidden = 0 AND tombstoned = 0 AND visibility = 'public'",
+            (key,),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="not found")
+        return row
+
+    def _insert_comment(paper_id: str, parent_id: str | None, body: CommentIn) -> dict[str, Any]:
+        try:
+            text = parse_comment_body(body.body)
+            name = parse_display_name(body.display_name)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        comment_id = new_comment_id()
+        now = utcnow()
+        conn.execute(
+            """
+            INSERT INTO paper_comments(id, paper_id, parent_id, body, display_name, like_count, created_at)
+            VALUES (?, ?, ?, ?, ?, 0, ?)
+            """,
+            (comment_id, paper_id, parent_id, text, name, now),
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM paper_comments WHERE id = ?", (comment_id,)).fetchone()
+        return comment_payload(row)
+
+    @app.get("/api/v1/papers/{item_key}/comments")
+    def list_comments(item_key: str) -> dict[str, Any]:
+        paper = _public_paper_row(item_key)
+        rows = conn.execute(
+            "SELECT * FROM paper_comments WHERE paper_id = ? ORDER BY created_at ASC",
+            (paper["zotero_item_key"],),
+        ).fetchall()
+        return {"comments": _thread_comments(rows)}
+
+    @app.post("/api/v1/papers/{item_key}/comments")
+    def create_comment(item_key: str, body: CommentIn) -> JSONResponse:
+        paper = _public_paper_row(item_key)
+        payload = _insert_comment(paper["zotero_item_key"], None, body)
+        return JSONResponse(payload, status_code=201)
+
+    @app.post("/api/v1/comments/{comment_id}/replies")
+    def create_reply(comment_id: str, body: CommentIn) -> JSONResponse:
+        parent = conn.execute("SELECT * FROM paper_comments WHERE id = ?", (comment_id,)).fetchone()
+        if parent is None:
+            raise HTTPException(status_code=404, detail="not found")
+        if parent["parent_id"]:
+            raise HTTPException(status_code=422, detail="reply depth exceeded")
+        _public_paper_row(parent["paper_id"])
+        payload = _insert_comment(parent["paper_id"], parent["id"], body)
+        return JSONResponse(payload, status_code=201)
+
+    @app.post("/api/v1/comments/{comment_id}/like")
+    def like_comment(comment_id: str) -> dict[str, Any]:
+        row = conn.execute("SELECT * FROM paper_comments WHERE id = ?", (comment_id,)).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="not found")
+        _public_paper_row(row["paper_id"])
+        conn.execute(
+            "UPDATE paper_comments SET like_count = like_count + 1 WHERE id = ?",
+            (comment_id,),
+        )
+        conn.commit()
+        updated = conn.execute("SELECT * FROM paper_comments WHERE id = ?", (comment_id,)).fetchone()
+        return {"id": updated["id"], "like_count": int(updated["like_count"])}
 
     @app.put("/api/v1/sync/papers")
     def upsert_paper(body: PaperIn, _: None = Depends(require_sync)) -> dict[str, str]:
@@ -559,11 +618,6 @@ def _public_key(key: str) -> str:
     return key
 
 
-def _forwarded_https(request: Request) -> bool:
-    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
-    return proto.split(",")[0].strip().lower() == "https"
-
-
 BLOB_KEY = re.compile(r"^[0-9a-f]{64}\.pdf$")
 
 
@@ -579,8 +633,38 @@ def _blob_path(settings: Settings, storage_key: str) -> Path:
     return path
 
 
+def _comment_counts(conn: sqlite3.Connection, keys: list[str]) -> dict[str, int]:
+    if not keys:
+        return {}
+    placeholders = ",".join("?" * len(keys))
+    rows = conn.execute(
+        f"SELECT paper_id, COUNT(*) FROM paper_comments WHERE paper_id IN ({placeholders}) GROUP BY paper_id",
+        keys,
+    ).fetchall()
+    return {str(row[0]): int(row[1]) for row in rows}
+
+
+def _thread_comments(rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
+    by_id: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        payload = comment_payload(row)
+        by_id[payload["id"]] = payload
+    tops: list[dict[str, Any]] = []
+    for payload in by_id.values():
+        parent_id = payload["parent_id"]
+        if parent_id and parent_id in by_id:
+            by_id[parent_id]["replies"].append(payload)
+        elif not parent_id:
+            tops.append(payload)
+    return tops
+
+
 def _paper_json(
-    conn: sqlite3.Connection, row: sqlite3.Row, include_abstract: bool = False, include_hidden: bool = False
+    conn: sqlite3.Connection,
+    row: sqlite3.Row,
+    include_abstract: bool = False,
+    include_hidden: bool = False,
+    comment_count: int = 0,
 ) -> dict[str, Any]:
     atts = conn.execute(
         "SELECT zotero_attachment_key, filename, size, checksum FROM attachments WHERE paper_key = ?",
@@ -600,6 +684,7 @@ def _paper_json(
         "visibility": row["visibility"],
         "has_pdf": bool(atts),
         "reading_status": row["reading_status"] if "reading_status" in row.keys() else None,
+        "comment_count": comment_count,
         "attachments": (
             [dict(att) for att in atts]
             if include_hidden

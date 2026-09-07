@@ -35,7 +35,7 @@ The script rsyncs the repo (no `.venv`, no local `data/`, no `.env`), keeps `WEP
 
 The web UI is built with `WEPAPER_BASE=/`.
 
-Owner reading-status edits use `WEPAPER_OWNER_PASSWORD` (server `.env` only) and an httpOnly cookie. Sign in at `/owner`. The sync bearer token is not accepted for status writes.
+Reading-status and comment writes are public and validated. The sync bearer token is still required for Zotero ingest. Automated tests must use an isolated database, never the nine production papers.
 
 ## Agent
 

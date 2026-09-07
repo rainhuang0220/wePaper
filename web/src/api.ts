@@ -13,7 +13,19 @@ export type Paper = {
   date_added: string | null;
   has_pdf: boolean;
   reading_status: ReadingStatus | null;
+  comment_count: number;
   abstract?: string;
+};
+
+export type PaperComment = {
+  id: string;
+  paper_id: string;
+  parent_id: string | null;
+  body: string;
+  display_name: string | null;
+  like_count: number;
+  created_at: string;
+  replies: PaperComment[];
 };
 
 const apiRoot = `${import.meta.env.BASE_URL}api/v1`;
@@ -54,25 +66,8 @@ export function pdfUrl(itemKey: string): string {
   return `${appBase()}paper/${itemKey}/pdf`;
 }
 
-export async function fetchOwnerSession(): Promise<boolean> {
-  const res = await fetch(`${apiRoot}/owner/session`, { credentials: "same-origin" });
-  if (!res.ok) return false;
-  const body = (await res.json()) as { owner?: boolean };
-  return Boolean(body.owner);
-}
-
-export async function loginOwner(password: string): Promise<void> {
-  const res = await fetch(`${apiRoot}/owner/login`, {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
-  });
-  if (!res.ok) throw new Error("Could not sign in");
-}
-
-export async function logoutOwner(): Promise<void> {
-  await fetch(`${apiRoot}/owner/logout`, { method: "POST", credentials: "same-origin" });
+export function discussionUrl(itemKey: string): string {
+  return `${appBase()}paper/${itemKey}/discussion`;
 }
 
 export async function patchPaperStatus(
@@ -86,5 +81,52 @@ export async function patchPaperStatus(
     body: JSON.stringify({ reading_status: readingStatus }),
   });
   if (!res.ok) throw new Error("Could not update reading status");
+  return res.json();
+}
+
+export async function fetchComments(itemKey: string): Promise<PaperComment[]> {
+  const res = await fetch(`${apiRoot}/papers/${itemKey}/comments`, { credentials: "same-origin" });
+  if (res.status === 404) throw new Error("Paper not found");
+  if (!res.ok) throw new Error("Could not load comments");
+  const body = (await res.json()) as { comments: PaperComment[] };
+  return body.comments;
+}
+
+export async function postComment(
+  itemKey: string,
+  body: string,
+  displayName?: string,
+): Promise<PaperComment> {
+  const res = await fetch(`${apiRoot}/papers/${itemKey}/comments`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body, display_name: displayName || null }),
+  });
+  if (!res.ok) throw new Error("Could not post comment");
+  return res.json();
+}
+
+export async function postReply(
+  commentId: string,
+  body: string,
+  displayName?: string,
+): Promise<PaperComment> {
+  const res = await fetch(`${apiRoot}/comments/${commentId}/replies`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body, display_name: displayName || null }),
+  });
+  if (!res.ok) throw new Error("Could not post reply");
+  return res.json();
+}
+
+export async function likeComment(commentId: string): Promise<{ id: string; like_count: number }> {
+  const res = await fetch(`${apiRoot}/comments/${commentId}/like`, {
+    method: "POST",
+    credentials: "same-origin",
+  });
+  if (!res.ok) throw new Error("Could not like comment");
   return res.json();
 }

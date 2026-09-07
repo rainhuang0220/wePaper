@@ -3,14 +3,15 @@ from __future__ import annotations
 import re
 from pathlib import PurePosixPath, PureWindowsPath
 
-_UNSAFE = re.compile(r"[\x00-\x1f\x7f]")
+_UNSAFE = re.compile(r'[\x00-\x1f\x7f?"\\<>|:;]')
 _ALLOWED_EXT = {".pdf"}
 
 
 def sanitize_filename(name: str, fallback: str = "file.pdf") -> str:
     raw = (name or "").replace("\\", "/")
     base = PurePosixPath(raw).name or PureWindowsPath(name or "").name
-    base = _UNSAFE.sub("", base).strip().strip(".")
+    base = _UNSAFE.sub("", base)
+    base = re.sub(r"\s+", " ", base).strip().strip(".")
     if not base or base in {".", ".."}:
         return fallback
     return base[:240]

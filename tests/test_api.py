@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -276,18 +277,10 @@ def test_reading_status_default_null_and_public_read(tmp_path: Path) -> None:
     assert detail["reading_status"] is None
 
 
-def test_owner_can_set_clear_and_filter_reading_status(tmp_path: Path) -> None:
+def test_visitor_can_set_clear_and_filter_reading_status(tmp_path: Path) -> None:
     client = make_client(tmp_path)
     _ingest_paper(client, key="C8TQ6QR5", title="A-mem")
     _ingest_paper(client, key="BBBBBBBB", title="Other")
-    assert client.patch("/api/v1/papers/C8TQ6QR5/status", json={"reading_status": "pending_deep"}).status_code == 401
-
-    bad_login = client.post("/api/v1/owner/login", json={"password": "nope"})
-    assert bad_login.status_code == 401
-
-    login = client.post("/api/v1/owner/login", json={"password": "owner-secret"})
-    assert login.status_code == 200
-    assert client.get("/api/v1/owner/session").json()["owner"] is True
 
     for value in (
         "pending_browse",
@@ -318,34 +311,14 @@ def test_owner_can_set_clear_and_filter_reading_status(tmp_path: Path) -> None:
     empty = client.get("/api/v1/papers", params={"q": "other", "reading_status": "pending_deep"}).json()["papers"]
     assert empty == []
 
-    client.post("/api/v1/owner/logout")
-    assert client.get("/api/v1/owner/session").json()["owner"] is False
-    assert client.patch("/api/v1/papers/C8TQ6QR5/status", json={"reading_status": "browsing"}).status_code == 401
-    assert client.get("/api/v1/papers/C8TQ6QR5").json()["reading_status"] == "pending_deep"
 
-
-def test_owner_cookie_is_secure_behind_https_proxy(tmp_path: Path) -> None:
-    client = make_client(tmp_path)
-    login = client.post(
-        "/api/v1/owner/login",
-        json={"password": "owner-secret"},
-        headers={"X-Forwarded-Proto": "https"},
-    )
-    assert login.status_code == 200
-    cookie = login.headers.get("set-cookie", "")
-    assert "wepaper_owner=" in cookie
-    assert "Secure" in cookie
-
-
-def test_sync_token_cannot_be_used_as_browser_owner_session(tmp_path: Path) -> None:
+def test_status_write_does_not_require_owner_or_sync_token(tmp_path: Path) -> None:
     client = make_client(tmp_path)
     _ingest_paper(client)
-    assert client.post("/api/v1/owner/login", json={"password": "secret-token"}).status_code == 401
-    assert client.patch(
-        "/api/v1/papers/C8TQ6QR5/status",
-        headers=auth(),
-        json={"reading_status": "pending_deep"},
-    ).status_code == 401
+    res = client.patch("/api/v1/papers/C8TQ6QR5/status", json={"reading_status": "browsing"})
+    assert res.status_code == 200
+    assert res.json()["reading_status"] == "browsing"
+    assert client.get("/api/v1/owner/login").status_code == 404
 
 
 def test_duplicate_upload_is_idempotent(tmp_path: Path) -> None:
@@ -452,3 +425,94 @@ def test_chinese_title_roundtrip(tmp_path: Path) -> None:
     _ingest_paper(client, key="ZHCN0001", title="基于长上下文的智能体记忆")
     listed = client.get("/api/v1/papers", params={"q": "智能体"}).json()["papers"]
     assert listed[0]["title"] == "基于长上下文的智能体记忆"
+
+
+def test_paper_comments_replies_likes_and_catalog_counts(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    _ingest_paper(client, key="C8TQ6QR5", title="A-mem")
+    _ingest_paper(client, key="BBBBBBBB", title="Other")
+
+    empty = client.get("/api/v1/papers/C8TQ6QR5/comments")
+    assert empty.status_code == 200
+    assert empty.json() == {"comments": []}
+    listed = client.get("/api/v1/papers").json()["papers"]
+    assert {row["zotero_item_key"]: row["comment_count"] for row in listed} == {
+        "C8TQ6QR5": 0,
+        "BBBBBBBB": 0,
+    }
+
+    created = client.post(
+        "/api/v1/papers/C8TQ6QR5/comments",
+        json={"body": "  这篇的记忆承诺实验值得对照。  ", "display_name": " Ada "},
+    )
+    assert created.status_code == 201
+    comment = created.json()
+    assert comment["body"] == "这篇的记忆承诺实验值得对照。"
+    assert comment["display_name"] == "Ada"
+    assert comment["parent_id"] is None
+    assert comment["like_count"] == 0
+
+    assert client.post("/api/v1/papers/C8TQ6QR5/comments", json={"body": "   "}).status_code == 422
+    assert client.post("/api/v1/papers/C8TQ6QR5/comments", json={"body": "<script>x</script>"}).status_code == 201
+
+    reply = client.post(
+        f"/api/v1/comments/{comment['id']}/replies",
+        json={"body": "同意，尤其是 verify 条件。"},
+    )
+    assert reply.status_code == 201
+    assert reply.json()["parent_id"] == comment["id"]
+    nested = client.post(
+        f"/api/v1/comments/{reply.json()['id']}/replies",
+        json={"body": "too deep"},
+    )
+    assert nested.status_code == 422
+
+    liked = client.post(f"/api/v1/comments/{comment['id']}/like")
+    assert liked.status_code == 200
+    assert liked.json()["like_count"] == 1
+
+    thread = client.get("/api/v1/papers/C8TQ6QR5/comments").json()["comments"]
+    by_id = {item["id"]: item for item in thread}
+    assert comment["id"] in by_id
+    assert by_id[comment["id"]]["like_count"] == 1
+    assert [item["body"] for item in by_id[comment["id"]]["replies"]] == ["同意，尤其是 verify 条件。"]
+    assert any(item["body"] == "<script>x</script>" for item in thread)
+
+    catalog = client.get("/api/v1/papers").json()["papers"]
+    counts = {row["zotero_item_key"]: row["comment_count"] for row in catalog}
+    assert counts["C8TQ6QR5"] == 3
+    assert counts["BBBBBBBB"] == 0
+
+    discussion = client.get("/paper/C8TQ6QR5/discussion", follow_redirects=False)
+    assert discussion.status_code == 200
+    assert "text/html" in discussion.headers.get("content-type", "")
+
+
+def test_concurrent_paper_and_comment_reads_do_not_crash_sqlite(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    _ingest_paper(client)
+    client.post("/api/v1/papers/C8TQ6QR5/comments", json={"body": "hello"})
+
+    def read_paper() -> int:
+        return client.get("/api/v1/papers/C8TQ6QR5").status_code
+
+    def read_comments() -> int:
+        return client.get("/api/v1/papers/C8TQ6QR5/comments").status_code
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        jobs = [pool.submit(read_paper) for _ in range(8)] + [pool.submit(read_comments) for _ in range(8)]
+        codes = [job.result() for job in jobs]
+    assert codes == [200] * 16
+
+
+def test_hidden_paper_keeps_comments_until_it_reappears(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    _ingest_paper(client, key="C8TQ6QR5", title="A-mem")
+    created = client.post("/api/v1/papers/C8TQ6QR5/comments", json={"body": "keep me"})
+    assert created.status_code == 201
+    assert client.post("/api/v1/sync/papers/C8TQ6QR5/hide", headers=auth()).status_code == 200
+    assert client.get("/api/v1/papers/C8TQ6QR5/comments").status_code == 404
+    assert client.post("/api/v1/papers/C8TQ6QR5/comments", json={"body": "nope"}).status_code == 404
+    _ingest_paper(client, key="C8TQ6QR5", title="A-mem")
+    thread = client.get("/api/v1/papers/C8TQ6QR5/comments").json()["comments"]
+    assert [item["body"] for item in thread] == ["keep me"]

@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { fetchOwnerSession, fetchPapers, paperUrl, patchPaperStatus, type Paper } from "../api";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { discussionUrl, fetchPapers, paperUrl, patchPaperStatus, type Paper } from "../api";
+import { prefersMobileViewer } from "../device";
 import { FILTERS, type ReadingStatus } from "../readingStatus";
 import { StatusChip } from "../StatusChip";
+
+const LONG_PRESS_MS = 480;
+const HOLD_HINT_MS = 160;
+const LONG_PRESS_SLOP = 18;
 
 function addedLabel(value: string | null): string {
   if (!value) return "";
@@ -42,11 +47,6 @@ export function LibraryPage() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [owner, setOwner] = useState(false);
-
-  useEffect(() => {
-    void fetchOwnerSession().then(setOwner);
-  }, []);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -162,11 +162,19 @@ export function LibraryPage() {
                 <div className="row-meta">
                   <StatusChip
                     value={paper.reading_status}
-                    owner={owner}
                     onChange={(next) => changeStatus(paper.zotero_item_key, next)}
-                    onFilter={(next) => updateParams({ status: next })}
                   />
                   <p className="authors">{secondLine(paper)}</p>
+                  <Link
+                    className="comment-count"
+                    to={discussionUrl(paper.zotero_item_key)}
+                    state={{ fromSearch: params.toString() }}
+                    aria-label={`${paper.title} 评论 · ${paper.comment_count}`}
+                    onClick={(event) => event.stopPropagation()}
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
+                    评论 · {paper.comment_count}
+                  </Link>
                 </div>
               </div>
               <time>{addedLabel(paper.date_added)}</time>
@@ -174,18 +182,84 @@ export function LibraryPage() {
           ))}
         </ol>
       )}
-      <footer className="colophon">
-        Published from a private Zotero collection.{" "}
-        <Link to="/owner">{owner ? "Owner signed in" : "Owner"}</Link>
-      </footer>
+      <footer className="colophon">Published from a private Zotero collection.</footer>
     </div>
   );
 }
 
 function PaperTitle({ paper }: { paper: Paper }) {
+  const navigate = useNavigate();
   const title = paper.venue ? `${paper.title} — ${paper.venue}` : paper.title;
+  const timer = useRef(0);
+  const hintTimer = useRef(0);
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const longPressed = useRef(false);
+  const [pressed, setPressed] = useState(false);
+
+  function clearTimer() {
+    window.clearTimeout(timer.current);
+    window.clearTimeout(hintTimer.current);
+    timer.current = 0;
+    hintTimer.current = 0;
+    setPressed(false);
+  }
+
+  function onPointerDown(event: ReactPointerEvent<HTMLAnchorElement>) {
+    if (!prefersMobileViewer()) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    longPressed.current = false;
+    origin.current = { x: event.clientX, y: event.clientY };
+    clearTimer();
+    hintTimer.current = window.setTimeout(() => setPressed(true), HOLD_HINT_MS);
+    timer.current = window.setTimeout(() => {
+      longPressed.current = true;
+      setPressed(true);
+      if (navigator.vibrate) navigator.vibrate(12);
+      navigate(discussionUrl(paper.zotero_item_key), { state: { fromSearch: window.location.search.replace(/^\?/, "") } });
+    }, LONG_PRESS_MS);
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLAnchorElement>) {
+    if (!origin.current || !timer.current) return;
+    const dx = event.clientX - origin.current.x;
+    const dy = event.clientY - origin.current.y;
+    if (dx * dx + dy * dy > LONG_PRESS_SLOP * LONG_PRESS_SLOP) clearTimer();
+  }
+
+  function finishPointer(event: ReactPointerEvent<HTMLAnchorElement>) {
+    window.clearTimeout(timer.current);
+    window.clearTimeout(hintTimer.current);
+    timer.current = 0;
+    hintTimer.current = 0;
+    origin.current = null;
+    if (longPressed.current) {
+      event.preventDefault();
+    } else {
+      setPressed(false);
+    }
+  }
+
   return (
-    <a className="row-open" href={paperUrl(paper.zotero_item_key)} title={title}>
+    <a
+      className={`row-open${pressed ? " is-longpress" : ""}`}
+      href={paperUrl(paper.zotero_item_key)}
+      title={prefersMobileViewer() ? `${title} · 长按打开讨论` : title}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={finishPointer}
+      onPointerCancel={finishPointer}
+      onContextMenu={(event) => {
+        if (prefersMobileViewer()) event.preventDefault();
+      }}
+      onClick={(event) => {
+        if (longPressed.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          longPressed.current = false;
+          setPressed(false);
+        }
+      }}
+    >
       <h2>{paper.title}</h2>
     </a>
   );

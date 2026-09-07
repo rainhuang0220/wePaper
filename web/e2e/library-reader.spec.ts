@@ -1,6 +1,6 @@
 import { expect, test, type Page, type Response } from "@playwright/test";
 
-const KEY = "PSELS7ZT";
+const KEY = "TEST0001";
 const PDF_PATH = `/paper/${KEY}/pdf`;
 const PAPER_PATH = `/paper/${KEY}`;
 
@@ -28,7 +28,6 @@ test("catalog titles use canonical paper URLs", async ({ page }) => {
 test("desktop title click opens native PDF and back returns to library", async ({ page, request }, info) => {
   test.skip(info.project.name !== "desktop", "desktop native PDF");
   await page.goto("/");
-  await page.getByLabel("Search papers").fill("memory");
   const target = page.locator(`ol.rows a.row-open[href$="/paper/${KEY}"]`);
   await expect(target).toBeVisible();
 
@@ -56,10 +55,9 @@ test("desktop title click opens native PDF and back returns to library", async (
 });
 
 test("mobile title tap follows raw PDF fallback, never the dead viewer", async ({ page, request }, info) => {
-  test.skip(info.project.name !== "mobile", "mobile raw PDF fallback");
+  test.skip(!info.project.name.startsWith("mobile"), "mobile raw PDF fallback");
 
   await page.goto("/");
-  await page.getByLabel("Search papers").fill("memory");
   const target = page.locator(`ol.rows a.row-open[href$="/paper/${KEY}"]`);
   await expect(target).toBeVisible();
 
@@ -98,12 +96,9 @@ test("status control does not open the paper", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("ol.rows .row").first()).toBeVisible();
   const chip = page.locator("ol.rows .status-chip").first();
-  if ((await chip.count()) === 0) {
-    test.info().annotations.push({ type: "note", description: "no public status chip yet" });
-    return;
-  }
   await chip.click();
   await expect(page).toHaveURL(/\/(\?.*)?$/);
   await expect(page.locator("ol.rows .row").first()).toBeVisible();
   await expect(page.locator(".reader-scroll")).toHaveCount(0);
+  await expect(page.getByRole("menu", { name: "阅读状态" })).toBeVisible();
 });

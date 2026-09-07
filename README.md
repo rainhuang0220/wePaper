@@ -15,7 +15,7 @@ Zotero on your Mac
 wepaper sync / daemon
       │  HTTPS + bearer token
       ▼
-wePaper server  →  public list  →  desktop native PDF / mobile web viewer
+wePaper server  →  public list  →  native / downloadable PDF
 ```
 
 ## Features
@@ -23,14 +23,15 @@ wePaper server  →  public list  →  desktop native PDF / mobile web viewer
 - Sync a chosen Zotero collection without writing `zotero.sqlite`
 - Public catalog as a dense list (title, authors, year)
 - Desktop: click a title → `/paper/:id` → native `/paper/:id/pdf`
-- Mobile: tap a title → `/paper/:id` inline Mozilla PDF.js viewer
+- Mobile: tap a title → `/paper/:id` → raw PDF (browser viewer or download)
 - `/paper/:id/pdf` is always the real PDF (Range / 206)
-- Owner reading-status labels (待泛读 … 已精读) with catalog filters
+- Open reading-status labels (待泛读 … 已精读) with catalog filters
+- Per-paper discussion: desktop `评论 · N`, mobile long-press title
 - Byte-range PDF transport (`application/pdf`, Range / 206)
 
 ## Screenshots
 
-![Library](docs/screenshots/v15-library-desktop.png)
+![Library](docs/screenshots/v16-library-desktop.png)
 
 ## Requirements
 
@@ -81,7 +82,8 @@ See [docs/deployment.md](docs/deployment.md). Production origin is `https://wepa
 
 - Public read, bearer-authenticated write
 - `WEPAPER_SYNC_TOKEN` must not appear in the frontend, git, or `VITE_*` variables
-- Reading-status writes use an httpOnly owner cookie (`/owner`); the password stays on the server
+- Reading-status and comment writes are open and validated; they do not use accounts
+- E2E that writes status/comments uses an isolated fixture server, never production papers
 - `/openapi.json` is disabled; CSP + `X-Frame-Options: DENY`
 - Blob keys are `{sha256}.pdf`; traversal is rejected; upload size is capped
 - Visibility: `#wepaper:private` hides list + PDF; collection removal hides
@@ -95,7 +97,7 @@ cd web && npm run e2e
 
 ## Reader architecture
 
-The server stores real PDF blobs and serves them as `application/pdf` with byte ranges. `/paper/:id` is device-aware: desktop 302s to `/paper/:id/pdf` (browser-native PDF); mobile serves the lazy official Mozilla PDF.js viewer. `/paper/:id/pdf` stays raw PDF on every device. The old custom canvas reader is gone.
+The server stores real PDF blobs and serves them as `application/pdf` with byte ranges. `/paper/:id` 302s to `/paper/:id/pdf` on every device (browser-native PDF or download). `/paper/:id/pdf` stays raw PDF. The v1.5 Android inline viewer is not the default reading path.
 
 ## License
 

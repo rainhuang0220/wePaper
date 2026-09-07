@@ -73,8 +73,6 @@ def test_reading_status_survives_zotero_metadata_and_pdf_replace(tmp_path: Path)
     zotero, remote, config, http, pdf = _harness(tmp_path)
     zotero.add_pdf(item_key="ITEM0001", title="Old title", pdf_path=pdf, attachment_key="ATT00001", version=1)
     run_sync(source=zotero, remote=remote, config=config)
-    login = http.post("/api/v1/owner/login", json={"password": "owner-secret"})
-    assert login.status_code == 200
     patched = http.patch("/api/v1/papers/ITEM0001/status", json={"reading_status": "pending_deep"})
     assert patched.status_code == 200
     zotero.papers["ITEM0001"].record.title = "New title"
@@ -98,7 +96,6 @@ def test_reading_status_survives_hide_and_reappear(tmp_path: Path) -> None:
     zotero, remote, config, http, pdf = _harness(tmp_path)
     zotero.add_pdf(item_key="ITEM0001", title="Keep status", pdf_path=pdf, attachment_key="ATT00001")
     run_sync(source=zotero, remote=remote, config=config)
-    assert http.post("/api/v1/owner/login", json={"password": "owner-secret"}).status_code == 200
     assert http.patch("/api/v1/papers/ITEM0001/status", json={"reading_status": "deep_reading"}).status_code == 200
     zotero.remove("ITEM0001")
     run_sync(source=zotero, remote=remote, config=config)
@@ -107,6 +104,28 @@ def test_reading_status_survives_hide_and_reappear(tmp_path: Path) -> None:
     run_sync(source=zotero, remote=remote, config=config)
     paper = http.get("/api/v1/papers/ITEM0001").json()
     assert paper["reading_status"] == "deep_reading"
+
+
+def test_comments_survive_zotero_metadata_update_and_hide(tmp_path: Path) -> None:
+    zotero, remote, config, http, pdf = _harness(tmp_path)
+    zotero.add_pdf(item_key="ITEM0001", title="Keep comments", pdf_path=pdf, attachment_key="ATT00001")
+    run_sync(source=zotero, remote=remote, config=config)
+    created = http.post("/api/v1/papers/ITEM0001/comments", json={"body": "stable thread"})
+    assert created.status_code == 201
+    zotero.papers["ITEM0001"].record.title = "Renamed"
+    zotero.papers["ITEM0001"].state.title = "Renamed"
+    zotero.papers["ITEM0001"].state.version = 2
+    zotero.papers["ITEM0001"].record.zotero_version = 2
+    run_sync(source=zotero, remote=remote, config=config)
+    thread = http.get("/api/v1/papers/ITEM0001/comments").json()["comments"]
+    assert [item["body"] for item in thread] == ["stable thread"]
+    assert http.get("/api/v1/papers/ITEM0001").json()["comment_count"] == 1
+    zotero.remove("ITEM0001")
+    run_sync(source=zotero, remote=remote, config=config)
+    zotero.add_pdf(item_key="ITEM0001", title="Renamed", pdf_path=pdf, attachment_key="ATT00001", version=3)
+    run_sync(source=zotero, remote=remote, config=config)
+    again = http.get("/api/v1/papers/ITEM0001/comments").json()["comments"]
+    assert [item["body"] for item in again] == ["stable thread"]
 
 
 def test_update_metadata_and_replace_pdf(tmp_path: Path) -> None:

@@ -50,11 +50,13 @@ Web API remains an optional metadata fallback if the user later provides a key. 
 
 ## Server
 
-- Public GET: paper list, paper detail, PDF stream (Range), device-aware `/paper/:id`, health, SPA.
-- `/paper/:id` is the only device-aware route. Desktop (`Sec-CH-UA-Mobile: ?0` or desktop UA) 302s to `/paper/:id/pdf`. Mobile phones/tablets get the SPA mobile viewer. Responses use `Cache-Control: private, no-store` and `Vary: Sec-CH-UA-Mobile, User-Agent`.
+- Public GET: paper list, paper detail, PDF stream (Range), comments, health, SPA.
+- `/paper/:id` 302s to `/paper/:id/pdf` for every client (`Cache-Control: private, no-store`, `Vary: Sec-CH-UA-Mobile, User-Agent`). Desktop and Android use the browser PDF/download path. The broken v1.5 inline viewer is not the default.
 - `/paper/:id/pdf` is always raw `application/pdf` on every device.
-- `/paper/:id/viewer` always serves the official Mozilla PDF.js viewer (mobile presentation).
-- Private write: ingest / hide / tombstone / sync state (Bearer token) and owner reading-status edits (httpOnly cookie). Tokens are never shipped to the frontend.
+- `/paper/:id/discussion` is the paper discussion surface.
+- `/paper/:id/viewer` remains a local diagnostic HTML viewer only.
+- Private write: ingest / hide / tombstone / sync state (Bearer token). Tokens are never shipped to the frontend.
+- Open public writes (intentionally unauthenticated, validated): reading status and paper comments/replies/likes.
 - SQLite + on-disk blobs keyed by `sha256`. The storage interface can later move to object storage without changing paper identity.
 - Visibility: `public` | `unlisted` | `private`. V1 lists and streams `public` only. Collection membership publishes as `public` unless a `#wepaper:private` tag is present.
 
@@ -72,7 +74,7 @@ Intended later: `https://wepaper.plainlist.space` once an A record exists.
 |-------|--------|--------|
 | Server + agent | Python 3.12, FastAPI, one package | Tests, one language, small deploy |
 | DB | SQLite + `wepaper.db.migrate()` | Single-user, persistent, no extra migrator |
-| Web | Vite + React catalog; desktop native PDF; lazy mobile PDF.js viewer | Desktop title click stays native `application/pdf`. Mobile title tap loads `PaperPage` + official `PDFViewer` only. |
+| Web | Vite + React catalog + discussion; native `/pdf` reading | Title click/tap is a full navigation to `/paper/:id` → 302 raw PDF. Discussion is a separate route. |
 | Process | uvicorn on loopback + nginx + existing TLS | Matches the host |
 | Host | `ubuntu@175.24.134.228` | Already serving `plainlist.space` |
 
@@ -85,14 +87,14 @@ Intended later: `https://wepaper.plainlist.space` once an A record exists.
 - `wepaper.agent` / `wepaper.remote` — apply + HTTPS client
 - `wepaper.db` — schema + connection
 - `wepaper.server` — public vs private HTTP
-- `wepaper.device` — DesktopNativePdf vs MobilePaperViewer
+- `wepaper.device` — historical mobile-vs-desktop classifier (unused on the default `/paper/:id` path)
 - `wepaper.reading_status` — mutually exclusive library labels
-- `wepaper.owner` — httpOnly owner session for status writes
+- `wepaper.comments` — body/name bounds and comment payloads
 
-Reading status is a wePaper-owned annotation on `papers.reading_status`. Zotero upsert updates metadata and PDF bytes only; it never writes that column. A hidden paper that later reappears with the same `zotero_item_key` keeps its previous status. A filename change does not, because identity is the Zotero item key.
+Reading status is a wePaper-owned annotation on `papers.reading_status`. Comments live in `paper_comments` keyed by `paper_id` (`zotero_item_key`). Zotero upsert updates metadata and PDF bytes only; it never writes status or comments. A hidden paper that later reappears with the same `zotero_item_key` keeps status and discussion.
 
-The mobile viewer pins `pdfjs-dist@5.7.284`. `PDFViewer` / `getDocument` keep `enableScripting` off (library default). CSP is `script-src 'self'`, which is the documented workaround for GHSA-hq66-cqwq-w95j. Desktop never loads PDF.js.
+The diagnostic viewer still pins `pdfjs-dist@5.7.284` with `enableScripting` off. Default reading does not load PDF.js. CSP is `script-src 'self'`.
 
 ## Security split
 
-`PUBLIC READ ≠ PUBLIC WRITE`. Anonymous visitors can list public papers and read their PDFs. Every mutating `/api/v1/sync/*` route requires `Authorization: Bearer`. Blobs are never mounted as static files. Hidden / private / tombstoned papers 404 on HTML and PDF.
+`PUBLIC READ ≠ SYNC WRITE`. Anonymous visitors can list public papers, read PDFs, change reading status, and post comments. Every mutating `/api/v1/sync/*` route requires `Authorization: Bearer`. Comment/status writes are validated (length, enums, parameterized SQL, React text rendering). Blobs are never mounted as static files. Hidden / private / tombstoned papers 404 on HTML, PDF, and comments.

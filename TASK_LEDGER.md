@@ -4,52 +4,52 @@ MISSION: mobile recovery + status redesign + paper discussions
 
 - [x] Load execution Skills
 - [x] Spawn Android investigator
-- [ ] Spawn mobile visual reviewer
-- [ ] Spawn discussion reviewer
-- [ ] Immediately remove broken mobile production viewer
-- [ ] Verify public mobile fallback works
-- [ ] Record recovery production commit
-- [ ] Audit all production reading statuses
-- [ ] Clear all fake/test statuses
-- [ ] Verify public catalog starts with no fake status
-- [ ] Prevent production test-status pollution
-- [ ] Create isolated Android environment
-- [ ] Reproduce Android PDF failure
-- [ ] Capture exact root cause
-- [ ] Write android-reader-failure.md
-- [ ] Implement Android inline fix OR choose raw-PDF fallback
-- [ ] Freeze desktop PDF path
-- [ ] Redesign status label
-- [ ] Redesign status selector
-- [ ] Redesign status filtering
-- [ ] Mobile responsive catalog pass
-- [ ] Add comments schema migration
-- [ ] Add replies
-- [ ] Add likes
-- [ ] Add comment count to catalog API
-- [ ] Add desktop Comments · N affordance
-- [ ] Add mobile title long-press discussion entry
-- [ ] Prevent long-press from opening paper
-- [ ] Build discussion route/surface
-- [ ] Build comment composer
-- [ ] Build reply UI
-- [ ] Build like UI
-- [ ] Add empty state
-- [ ] Add navigation/back behavior
-- [ ] Add test-data isolation
-- [ ] Desktop E2E
-- [ ] Mobile E2E
-- [ ] Android reading verification
-- [ ] Discussion E2E
-- [ ] Status E2E
-- [ ] Zotero preservation regression
-- [ ] Security regression
-- [ ] Performance regression
-- [ ] Capture desktop screenshots
-- [ ] Capture mobile screenshots
-- [ ] Run visual reviewers
-- [ ] Fix HIGH/MEDIUM findings
-- [ ] Ensure production contains no test statuses/comments
+- [x] Spawn mobile visual reviewer
+- [x] Spawn discussion reviewer
+- [x] Immediately remove broken mobile production viewer
+- [x] Verify public mobile fallback works
+- [x] Record recovery production commit
+- [x] Audit all production reading statuses
+- [x] Clear all fake/test statuses
+- [x] Verify public catalog starts with no fake status
+- [x] Prevent production test-status pollution
+- [x] Create isolated Android environment
+- [x] Reproduce Android PDF failure
+- [x] Capture exact root cause
+- [x] Write android-reader-failure.md
+- [x] Implement Android inline fix OR choose raw-PDF fallback
+- [x] Freeze desktop PDF path
+- [x] Redesign status label
+- [x] Redesign status selector
+- [x] Redesign status filtering
+- [x] Mobile responsive catalog pass
+- [x] Add comments schema migration
+- [x] Add replies
+- [x] Add likes
+- [x] Add comment count to catalog API
+- [x] Add desktop Comments · N affordance
+- [x] Add mobile title long-press discussion entry
+- [x] Prevent long-press from opening paper
+- [x] Build discussion route/surface
+- [x] Build comment composer
+- [x] Build reply UI
+- [x] Build like UI
+- [x] Add empty state
+- [x] Add navigation/back behavior
+- [x] Add test-data isolation
+- [x] Desktop E2E
+- [x] Mobile E2E
+- [x] Android reading verification
+- [x] Discussion E2E
+- [x] Status E2E
+- [x] Zotero preservation regression
+- [x] Security regression
+- [x] Performance regression
+- [x] Capture desktop screenshots
+- [x] Capture mobile screenshots
+- [x] Run visual reviewers
+- [x] Fix HIGH/MEDIUM findings
+- [x] Ensure production contains no test statuses/comments
 - [ ] Deploy final production
 - [ ] Public desktop verification
 - [ ] Public Android/fallback verification
@@ -65,7 +65,6 @@ MISSION: mobile recovery + status redesign + paper discussions
 - Canonical URL: https://wepaper.plainlist.space
 - Repo: https://github.com/rainhuang0220/wePaper
 - Broken release: v1.5.0 / `4bdc8b47c3f37c4028388323211f1eb9afdbe414`
-- Policy: `/paper/:id/pdf` is always raw `application/pdf`. Desktop PDF is frozen (native).
-- Recovery: mobile `/paper/:id` must not serve the broken inline viewer.
-- Reading status and comments are open writes. No account system.
-- Automated tests must never mutate real production papers.
+- Recovery commit (already on production): `9bc593d368ff39ff8ebfe7c51e36b988c39dc74f`
+- ANDROID_INLINE: NOT ENABLED — RAW PDF FALLBACK
+- E2E writes use `/tmp/wepaper-e2e` fixtures (TEST0001/TEST0002), never production papers.

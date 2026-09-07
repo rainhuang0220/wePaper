@@ -25,6 +25,15 @@ def test_null_bytes_and_control_chars() -> None:
     assert "\n" not in sanitize_filename("bad\nname.pdf")
 
 
+def test_strips_content_disposition_unsafe_characters() -> None:
+    name = sanitize_filename('Li ? - 2026 - "ask".pdf')
+    assert "?" not in name
+    assert '"' not in name
+    assert "\\" not in name
+    assert name.endswith(".pdf")
+    assert "Li" in name
+
+
 def test_storage_name_is_hash_plus_ext() -> None:
     assert safe_storage_name("deadbeef" * 8, "Paper Title.pdf") == ("deadbeef" * 8) + ".pdf"
     assert ".." not in safe_storage_name("abc", "../../../x.exe")

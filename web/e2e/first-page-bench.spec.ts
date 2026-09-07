@@ -57,6 +57,7 @@ async function clickTitleOpensNativePdf(page: Page, key: string): Promise<number
 }
 
 test("isolated cold catalog clicks meet the first-page gate", async ({ browser }, info) => {
+  test.skip(!process.env.WEPAPER_BENCH, "opt-in production bench");
   const mobile = info.project.name === "mobile";
   const records: object[] = [];
   const samples: number[] = [];
@@ -80,6 +81,7 @@ test("isolated cold catalog clicks meet the first-page gate", async ({ browser }
 });
 
 test("warm second Range of a medium PDF is fast", async ({ request }) => {
+  test.skip(!process.env.WEPAPER_BENCH, "opt-in production bench");
   const headers = { Range: "bytes=0-262143" };
   const first = await request.get("/paper/PAS2TSBP/pdf", { headers });
   expect([200, 206]).toContain(first.status());
