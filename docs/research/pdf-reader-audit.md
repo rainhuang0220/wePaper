@@ -1,5 +1,7 @@
 # PDF Reader Architecture Audit (wePaper V1 → V1.1)
 
+> **Historical.** Describes the removed in-app reader. Default reading since v1.4 is native `/paper/:id/pdf`.
+
 **Date:** 2026-09-07 (V1 audit). V1.1 shipped the same transport with a continuous reader and canonical `/paper/{id}/pdf`.
 
 **Scope:** V1 reader (`web/src/PdfReader.tsx`), PDF delivery (`src/wepaper/server.py`), live endpoints.  

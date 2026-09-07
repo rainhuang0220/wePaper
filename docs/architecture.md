@@ -7,7 +7,7 @@ Personal Zotero collection → local sync agent → public HTTPS paper library.
 **Local API read-only daemon + full collection reconcile + authenticated HTTPS ingest.**
 
 ```
-Zotero 10 (Mac, :23119)
+Zotero (Local API, usually :23119)
         │  Local API v3 (GET only)
         ▼
 wePaper Sync Agent (`wepaper sync` / `wepaper daemon`)
@@ -33,7 +33,7 @@ Rejected as primary: filesystem watch, live sqlite, WebDAV, a Zotero plugin, Web
 | WebDAV | Opaque Zotero packaging; no metadata |
 | Plugin | Install friction and upgrade coupling |
 
-Web API remains an optional metadata fallback if the user later provides a key. V1 does not require it.
+v1.6 uses Zotero Local API only. A zotero.org Web API key path is not implemented.
 
 ## Sync
 
@@ -60,13 +60,11 @@ Web API remains an optional metadata fallback if the user later provides a key. 
 - SQLite + on-disk blobs keyed by `sha256`. The storage interface can later move to object storage without changing paper identity.
 - Visibility: `public` | `unlisted` | `private`. V1 lists and streams `public` only. Collection membership publishes as `public` unless a `#wepaper:private` tag is present.
 
-## Public URL (V1)
+## Public URL
 
-`https://wepaper.plainlist.space`
+Canonical origin: `https://wepaper.plainlist.space` (subdomain TLS, nginx `/` → `127.0.0.1:8788`, UI built with `WEPAPER_BASE=/`).
 
-Tencent intercepts HTTP-01 for hostnames that are not on the filed domain set. A path on the existing `plainlist.space` certificate is the working HTTPS door. nginx strips `/wepaper/` and proxies to `127.0.0.1:8788`. The UI is built with `WEPAPER_BASE=/wepaper/`.
-
-Intended later: `https://wepaper.plainlist.space` once an A record exists.
+`https://plainlist.space/wepaper/` 301-redirects to the subdomain. The earlier path-on-`plainlist.space` setup is historical; see [research/v11-origin.md](research/v11-origin.md).
 
 ## Stack
 
@@ -75,8 +73,8 @@ Intended later: `https://wepaper.plainlist.space` once an A record exists.
 | Server + agent | Python 3.12, FastAPI, one package | Tests, one language, small deploy |
 | DB | SQLite + `wepaper.db.migrate()` | Single-user, persistent, no extra migrator |
 | Web | Vite + React catalog + discussion; native `/pdf` reading | Title click/tap is a full navigation to `/paper/:id` → 302 raw PDF. Discussion is a separate route. |
-| Process | uvicorn on loopback + nginx + existing TLS | Matches the host |
-| Host | `ubuntu@175.24.134.228` | Already serving `plainlist.space` |
+| Process | uvicorn on loopback + nginx + TLS | Matches a typical VPS |
+| Public origin | `wepaper.plainlist.space` | Current demo |
 
 ## Modules
 

@@ -8,7 +8,7 @@ Zotero (running) → Local API → wepaper sync → HTTPS → wePaper server
 
 ```bash
 wepaper doctor          # Zotero running? Local API? collection present?
-wepaper sync --once     # one incremental/full reconcile
+wepaper sync --once     # one full collection-tree reconcile
 wepaper daemon          # poll loop + exclusive lock
 wepaper status          # last local cursor
 wepaper install-agent   # macOS launchd
@@ -22,7 +22,7 @@ export WEPAPER_SERVER_URL="https://wepaper.plainlist.space"
 export WEPAPER_SYNC_TOKEN="…"   # never commit; never put in VITE_*
 ```
 
-The first matching collection name wins, including subcollections.
+Every listed collection name is published, including its subcollections. Names are comma-separated (`WEPAPER_COLLECTION=wePaper,Agent Memory`).
 
 ## Enable Local API
 
@@ -43,7 +43,7 @@ The agent sends `User-Agent: wePaper-Sync/0.1` and `Zotero-Allowed-Request: 1`. 
 
 A failed batch does **not** commit `library_version`. Restart resumes a full reconcile of the collection tree.
 
-Reading status is wePaper-owned. Metadata updates, PDF replacements, hide, and later reappearance of the same `zotero_item_key` preserve `reading_status`. Filename changes do not affect it.
+Reading status and comments are wePaper-owned. Metadata updates, PDF replacements, hide, and later reappearance of the same `zotero_item_key` preserve `reading_status` and the discussion thread. Filename changes do not affect either.
 
 ## Visibility
 

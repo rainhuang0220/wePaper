@@ -1,7 +1,7 @@
 [project]
 name = "wepaper"
 version = "0.1.0"
-description = "Personal Zotero paper library on the web"
+description = "Publish a Zotero collection as a public paper library"
 readme = "README.md"
 authors = [
     { name = "rainhuang0220", email = "iamrainhuang@163.com" }

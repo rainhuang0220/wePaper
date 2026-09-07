@@ -1,5 +1,7 @@
 # wePaper architecture review (adversarial)
 
+> **Historical (2026-09-06).** Pre-ship critique. Not the v1.6.0 product spec. Current behavior is in [docs/architecture.md](../architecture.md) and the [README](../../README.md).
+
 **Role:** production critic. No feature work.  
 **Inputs:** `docs/architecture.md`, `docs/research/zotero-architecture.md`, `docs/research/environment.md`, `TASK_LEDGER.md`.  
 **Verdict:** the Local API + hide/tombstone + bearer-write split is the right *shape*. The locked V1 write-up is not shippable. It under-specifies the ingest protocol, crash-safe cursors, visibility enforcement, blob identity, and every operational fact already true on this Mac and VPS.

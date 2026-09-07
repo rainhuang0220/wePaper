@@ -1,5 +1,7 @@
 # Environment reconnaissance (2026-09-06)
 
+> **Snapshot.** DNS for `wepaper.plainlist.space` and Local API enablement were added later. See [v11-origin.md](v11-origin.md).
+
 ## Local Mac
 
 - Zotero **10.0.1** running; Connector ping OK at `127.0.0.1:23119`.

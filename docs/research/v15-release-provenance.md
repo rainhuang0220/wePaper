@@ -1,5 +1,7 @@
 # v1.5.0 release provenance
 
+> **Not current after v1.6.0.** Mobile default is now 302 → raw PDF. Status writes are open. See [CHANGELOG.md](../../CHANGELOG.md).
+
 **Commit:** `4bdc8b47c3f37c4028388323211f1eb9afdbe414`  
 **Production origin:** https://wepaper.plainlist.space (`175.24.134.228`)  
 **Catalog bundle:** `/assets/index-CYw1oMTK.js`  

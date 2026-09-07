@@ -1,5 +1,7 @@
 # wePaper reference research
 
+> **Historical (2026-09-06).** Pre-implementation research. The default reader is no longer PDF.js (changed in v1.4+). See the [README](../../README.md).
+
 **Date:** 2026-09-06  
 **Scope:** Open-source and product benchmarks for a public personal Zotero paper library.  
 **This document does not implement wePaper.** It records what real projects actually do after reading their READMEs, architecture notes, source trees, issues, and official docs.

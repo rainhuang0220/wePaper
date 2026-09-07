@@ -1,41 +1,35 @@
 # Deployment
 
-Production host: `ubuntu@175.24.134.228` (宝塔 nginx + systemd).
+Operator guide for the v1.6.0 server. Product pages: [index](README.md).
 
-**Canonical URL:** `https://wepaper.plainlist.space`
+**Demo origin:** `https://wepaper.plainlist.space`
 
-Legacy `https://plainlist.space/wepaper/` 301-redirects to the subdomain (same FastAPI process, same `/var/lib/wepaper` data).
+Legacy `https://plainlist.space/wepaper/` 301-redirects to that origin (same process and data directory).
 
-## Server layout
+## Any Linux host
 
-```
-/home/ubuntu/wepaper/
-  src/ web/dist/ pyproject.toml
-  .venv/
-  .env                 # 0600, contains WEPAPER_SYNC_TOKEN
-/var/lib/wepaper/      # sqlite + blobs, 0700
-```
+1. `uv sync` and `cd web && npm install && npm run build`
+2. Put `WEPAPER_DATA_DIR`, `WEPAPER_SYNC_TOKEN`, and `WEPAPER_PUBLIC_URL` in a `0600` `.env`
+3. Run `uv run wepaper serve` on loopback (default `127.0.0.1:8788`)
+4. Put nginx (or another reverse proxy) in front with TLS. Keep `proxy_cache` **off** for this vhost — a cached PDF `206` can replace the file with a fragment. Do not gzip `application/pdf`.
+5. Use `deploy/wepaper.service` and `deploy/nginx-wepaper.plainlist.space.conf` as templates.
 
-Process: `uvicorn` on `127.0.0.1:8788` via systemd `wepaper.service`.
+Reading-status and comment writes are public and validated. The sync bearer token is required for Zotero ingest. Automated tests must use an isolated database, never the production database.
 
-TLS: Let's Encrypt `wepaper.plainlist.space` via webroot `/var/www/letsencrypt`.
+## Current demo host
 
-nginx vhost: `/www/server/panel/vhost/nginx/wepaper.plainlist.space.conf` (repo: `deploy/nginx-wepaper.plainlist.space.conf`). Proxies `/` → `127.0.0.1:8788` with `Range` / `If-Range` and **`proxy_cache off`**. 宝塔’s global `proxy.conf` turns `proxy_cache` on; caching a PDF `206` would replace the file with a 64KB fragment. Gzip is on for JS/CSS/JSON only — `application/pdf` is not in `gzip_types`, so byte ranges stay valid.
+The public demo uses systemd + nginx in front of uvicorn on `127.0.0.1:8788`. SQLite and blobs live under `/var/lib/wepaper` (`0700`). The web UI is built with `WEPAPER_BASE=/`.
 
-## Deploy
-
-From a trusted machine with SSH to `ubuntu@175.24.134.228`:
+From a machine that already has SSH access to that host:
 
 ```bash
 cd web && npm run build && cd ..
 ./deploy/deploy.sh
 ```
 
-The script rsyncs the repo (no `.venv`, no local `data/`, no `.env`), keeps `WEPAPER_PUBLIC_URL=https://wepaper.plainlist.space` on the server, restarts systemd, and smoke-tests loopback `/api/v1/health`.
+The script rsyncs the repo (no `.venv`, no local `data/`, no `.env`), keeps `WEPAPER_PUBLIC_URL` on the server, restarts systemd, and smoke-tests loopback `/api/v1/health`.
 
-The web UI is built with `WEPAPER_BASE=/`.
-
-Reading-status and comment writes are public and validated. The sync bearer token is still required for Zotero ingest. Automated tests must use an isolated database, never the nine production papers.
+nginx must forward `Range` / `If-Range`. Gzip JS/CSS/JSON only.
 
 ## Agent
 
@@ -56,3 +50,26 @@ sudo systemctl status wepaper
 ```
 
 SQLite and blobs live under `WEPAPER_DATA_DIR` and survive process restart.
+
+## Environment
+
+Server (`.env`, mode `0600`):
+
+| Variable | Role |
+| --- | --- |
+| `WEPAPER_DATA_DIR` | SQLite + blobs (production: `/var/lib/wepaper`) |
+| `WEPAPER_SYNC_TOKEN` | Bearer secret for `/api/v1/sync/*` |
+| `WEPAPER_PUBLIC_URL` | Canonical origin |
+| `WEPAPER_HOST` / `WEPAPER_PORT` | uvicorn bind (`127.0.0.1:8788`) |
+| `WEPAPER_MAX_UPLOAD_BYTES` | Attachment cap (default 80 MiB) |
+
+Agent:
+
+| Variable | Role |
+| --- | --- |
+| `WEPAPER_COLLECTION` | Collection names, comma-separated |
+| `WEPAPER_SERVER_URL` | Server origin the agent calls |
+| `WEPAPER_SYNC_TOKEN` | Same bearer as the server |
+| `WEPAPER_POLL_SECONDS` | Daemon interval (default 60) |
+| `WEPAPER_STATE_DIR` | Agent cursor + `agent.env` (default `~/.config/wepaper`) |
+| `WEPAPER_ZOTERO_API` | Local API (default `http://127.0.0.1:23119/api`) |
