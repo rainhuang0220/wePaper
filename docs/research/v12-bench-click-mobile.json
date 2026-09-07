@@ -1,11 +1,11 @@
 {
-  "p50": 1343,
-  "p95": 2360,
+  "p50": 1350,
+  "p95": 2334,
   "samples": [
-    846,
-    2360,
-    1343,
-    1855
+    845,
+    2334,
+    1350,
+    1849
   ],
   "records": [
     {
@@ -13,52 +13,52 @@
       "key": "PSELS7ZT",
       "size": "small",
       "bytes": 227651,
-      "firstPageMs": 846,
-      "backingWidth": 954,
-      "backingHeight": 1234,
-      "cssWidth": 318,
-      "cssHeight": 412,
+      "firstPageMs": 845,
+      "backingWidth": 1170,
+      "backingHeight": 1512,
+      "cssWidth": 390,
+      "cssHeight": 504,
       "dpr": 3,
-      "at": "2026-09-06T19:38:28.700Z"
+      "at": "2026-09-07T06:35:10.427Z"
     },
     {
       "project": "mobile",
       "key": "PAS2TSBP",
       "size": "medium",
       "bytes": 2705358,
-      "firstPageMs": 2360,
-      "backingWidth": 954,
-      "backingHeight": 1234,
-      "cssWidth": 318,
-      "cssHeight": 412,
+      "firstPageMs": 2334,
+      "backingWidth": 1170,
+      "backingHeight": 1512,
+      "cssWidth": 390,
+      "cssHeight": 504,
       "dpr": 3,
-      "at": "2026-09-06T19:38:34.614Z"
+      "at": "2026-09-07T06:35:17.041Z"
     },
     {
       "project": "mobile",
       "key": "MUZIM3FK",
       "size": "linearized",
       "bytes": 1895106,
-      "firstPageMs": 1343,
-      "backingWidth": 954,
-      "backingHeight": 1234,
-      "cssWidth": 318,
-      "cssHeight": 412,
+      "firstPageMs": 1350,
+      "backingWidth": 1170,
+      "backingHeight": 1512,
+      "cssWidth": 390,
+      "cssHeight": 504,
       "dpr": 3,
-      "at": "2026-09-06T19:38:37.753Z"
+      "at": "2026-09-07T06:35:20.476Z"
     },
     {
       "project": "mobile",
       "key": "3FYGRVK7",
       "size": "large",
       "bytes": 5568857,
-      "firstPageMs": 1855,
-      "backingWidth": 954,
-      "backingHeight": 1234,
-      "cssWidth": 318,
-      "cssHeight": 412,
+      "firstPageMs": 1849,
+      "backingWidth": 1170,
+      "backingHeight": 1512,
+      "cssWidth": 390,
+      "cssHeight": 504,
       "dpr": 3,
-      "at": "2026-09-06T19:38:43.872Z"
+      "at": "2026-09-07T06:35:27.512Z"
     }
   ]
 }

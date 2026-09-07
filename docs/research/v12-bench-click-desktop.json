@@ -1,11 +1,11 @@
 {
-  "p50": 1377,
-  "p95": 1861,
+  "p50": 1410,
+  "p95": 2365,
   "samples": [
-    1336,
-    1377,
-    1861,
-    1855
+    1410,
+    2324,
+    2365,
+    1348
   ],
   "records": [
     {
@@ -13,52 +13,52 @@
       "key": "PSELS7ZT",
       "size": "small",
       "bytes": 227651,
-      "firstPageMs": 1336,
-      "backingWidth": 2736,
-      "backingHeight": 3540,
-      "cssWidth": 1368,
-      "cssHeight": 1770,
+      "firstPageMs": 1410,
+      "backingWidth": 2878,
+      "backingHeight": 3726,
+      "cssWidth": 1439,
+      "cssHeight": 1863,
       "dpr": 2,
-      "at": "2026-09-06T19:37:56.263Z"
+      "at": "2026-09-07T06:34:16.105Z"
     },
     {
       "project": "desktop",
       "key": "PAS2TSBP",
       "size": "medium",
       "bytes": 2705358,
-      "firstPageMs": 1377,
-      "backingWidth": 2736,
-      "backingHeight": 3540,
-      "cssWidth": 1368,
-      "cssHeight": 1770,
+      "firstPageMs": 2324,
+      "backingWidth": 2878,
+      "backingHeight": 3726,
+      "cssWidth": 1439,
+      "cssHeight": 1863,
       "dpr": 2,
-      "at": "2026-09-06T19:37:59.260Z"
+      "at": "2026-09-07T06:34:19.888Z"
     },
     {
       "project": "desktop",
       "key": "MUZIM3FK",
       "size": "linearized",
       "bytes": 1895106,
-      "firstPageMs": 1861,
-      "backingWidth": 2736,
-      "backingHeight": 3540,
-      "cssWidth": 1368,
-      "cssHeight": 1770,
+      "firstPageMs": 2365,
+      "backingWidth": 2878,
+      "backingHeight": 3726,
+      "cssWidth": 1439,
+      "cssHeight": 1863,
       "dpr": 2,
-      "at": "2026-09-06T19:38:05.193Z"
+      "at": "2026-09-07T06:34:26.209Z"
     },
     {
       "project": "desktop",
       "key": "3FYGRVK7",
       "size": "large",
       "bytes": 5568857,
-      "firstPageMs": 1855,
-      "backingWidth": 2736,
-      "backingHeight": 3540,
-      "cssWidth": 1368,
-      "cssHeight": 1770,
+      "firstPageMs": 1348,
+      "backingWidth": 2878,
+      "backingHeight": 3726,
+      "cssWidth": 1439,
+      "cssHeight": 1863,
       "dpr": 2,
-      "at": "2026-09-06T19:38:11.376Z"
+      "at": "2026-09-07T06:34:29.657Z"
     }
   ]
 }
