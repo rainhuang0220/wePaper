@@ -22,23 +22,19 @@ MISSION: native PDF default route
 - [x] Deploy production
 - [x] Public title-click verification
 - [x] Public direct-/paper/:id verification
-- [ ] Push main
-- [ ] Create new semantic version tag
-- [ ] Create GitHub Release
-- [ ] Verify production == release commit
+- [x] Push main
+- [x] Create new semantic version tag
+- [x] Create GitHub Release
+- [x] Verify production == release commit
 - [x] Update docs
-- [ ] Final clean git status
+- [x] Final clean git status
 
 ## Notes
 
 - Canonical URL: https://wepaper.plainlist.space
 - Repo: https://github.com/rainhuang0220/wePaper
 - Version: v1.4.0
+- Release commit: `63cd9775932ca8021d27a4610825299e537f78ad`
+- Tag: https://github.com/rainhuang0220/wePaper/releases/tag/v1.4.0
 - Decision: PDF.js in-app viewer REMOVED. Default is browser-native `/paper/:id/pdf`.
-- Routing/UX reviewer (c14546ab): PASS, HIGH/MEDIUM none
-- Production reviewer (ab4e0ad8): PASS
-- Public title click: `https://wepaper.plainlist.space/paper/PSELS7ZT/pdf` `application/pdf`
-- Public `/paper/PSELS7ZT` → 302 → `/paper/PSELS7ZT/pdf`
-- Public Back: PDF → library (9 rows)
 - Production JS: `index-BAGeQMXW.js` SHA-256 `2bcd17c7f833ae60cd4133842c903e9fdff848229dbfa82142e7e45254523896`
-- Public click bench: desktop P50 113 ms / P95 132 ms; mobile P50 123 ms / P95 130 ms
