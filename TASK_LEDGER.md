@@ -51,11 +51,11 @@ MISSION: mobile inline PDF adaptation + reading status
 - [x] Deploy production
 - [x] Public desktop verification
 - [x] Public mobile verification
-- [ ] Push main
-- [ ] Tag release
-- [ ] GitHub Release
-- [ ] Production == release commit
-- [ ] Final clean git status
+- [x] Push main
+- [x] Tag release
+- [x] GitHub Release
+- [x] Production == release commit
+- [x] Final clean git status
 
 ## Notes
 
