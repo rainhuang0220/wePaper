@@ -10,6 +10,7 @@ export default defineConfig({
   retries: 0,
   use: {
     baseURL,
+    acceptDownloads: true,
     trace: "off",
     launchOptions: {
       args: process.env.WEPAPER_RESOLVE_IP

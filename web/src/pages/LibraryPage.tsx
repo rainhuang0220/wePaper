@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { fetchPapers, pdfUrl, type Paper } from "../api";
-import { warmPdf } from "../pdfLoader";
 
 function addedLabel(value: string | null): string {
   if (!value) return "";
@@ -123,13 +122,10 @@ export function LibraryPage() {
         <ol className="rows">
           {papers.map((paper) => (
             <li key={paper.zotero_item_key}>
-              <Link
+              <a
                 className="row"
-                to={`/paper/${paper.zotero_item_key}`}
+                href={pdfUrl(paper.zotero_item_key)}
                 title={paper.venue ? `${paper.title} — ${paper.venue}` : paper.title}
-                onPointerEnter={() => {
-                  if (paper.has_pdf) warmPdf(pdfUrl(paper.zotero_item_key));
-                }}
               >
                 <span className="gutter" aria-hidden="true">
                   {paper.has_pdf ? <DocIcon /> : null}
@@ -139,7 +135,7 @@ export function LibraryPage() {
                   <p className="authors">{secondLine(paper)}</p>
                 </span>
                 <time>{addedLabel(paper.date_added)}</time>
-              </Link>
+              </a>
             </li>
           ))}
         </ol>

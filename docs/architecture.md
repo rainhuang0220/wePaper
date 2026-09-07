@@ -16,7 +16,7 @@ wePaper Sync Agent (`wepaper sync` / `wepaper daemon`)
 wePaper Server (FastAPI)
         ├── SQLite metadata
         ├── PDF blobs on disk (content-addressed)
-        └── Public web UI + PDF.js
+        └── Public web UI + browser-native PDF
 ```
 
 This matches Zotero’s intended integration surface ([Local API](https://www.zotero.org/support/dev/web_api/v3/local_api)). The public server never sees the Mac filesystem. The agent never writes `zotero.sqlite` and never mutates the Zotero library.
@@ -50,7 +50,7 @@ Web API remains an optional metadata fallback if the user later provides a key. 
 
 ## Server
 
-- Public GET: paper list, paper detail, PDF stream (Range), health, SPA.
+- Public GET: paper list, paper detail, PDF stream (Range), `/paper/:id` → `/paper/:id/pdf`, health, SPA.
 - Private write: ingest / hide / tombstone / sync state. Bearer token. Never shipped to the frontend.
 - SQLite + on-disk blobs keyed by `sha256`. The storage interface can later move to object storage without changing paper identity.
 - Visibility: `public` | `unlisted` | `private`. V1 lists and streams `public` only. Collection membership publishes as `public` unless a `#wepaper:private` tag is present.
@@ -69,7 +69,7 @@ Intended later: `https://wepaper.plainlist.space` once an A record exists.
 |-------|--------|--------|
 | Server + agent | Python 3.12, FastAPI, one package | Tests, one language, small deploy |
 | DB | SQLite + `wepaper.db.migrate()` | Single-user, persistent, no extra migrator |
-| Web | Vite + React + pdfjs-dist | Mature chat-style viewer, static assets |
+| Web | Vite + React catalog; native PDF | Title click is a full navigation to real `application/pdf` |
 | Process | uvicorn on loopback + nginx + existing TLS | Matches the host |
 | Host | `ubuntu@175.24.134.228` | Already serving `plainlist.space` |
 

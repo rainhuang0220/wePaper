@@ -1,16 +1,14 @@
-/* wePaper — library chrome. Official pdf_viewer.css owns page / text-layer paint. */
+/* wePaper — library chrome. Papers open the browser-native PDF. */
 
 :root {
   --bg: #fff;
   --bg-bar: #f9f9fa;
-  --bg-reader: #d4d4d7;
   --ink: #222226;
   --muted: #888;
   --line: #e1e1e1;
   --line-toolbar: #b8b8b8;
   --hover: #f2f2f2;
   --accent: #4072e5;
-  --hit: rgb(180 0 170 / 0.28);
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
 }
 
@@ -165,142 +163,10 @@ button { cursor: pointer; }
   background: linear-gradient(var(--line) 13px, transparent 13px) 38px 24px / 46% 13px no-repeat;
 }
 
-.paper-page {
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
-  min-height: 0;
-  background: var(--bg-reader);
-}
-
-.reader { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.reader-tools {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  height: 32px;
-  padding: 0 8px;
-  background: var(--bg-bar);
-  border-bottom: 1px solid var(--line-toolbar);
-  flex-shrink: 0;
-}
-.tools-left, .tools-right {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-}
-.tools-right { justify-content: flex-end; }
-.tools-center {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: center;
-}
-
-.back {
-  font-size: 13px;
-  text-decoration: none;
-  color: var(--ink);
-  white-space: nowrap;
-  padding: 0 4px;
-}
-.reader-tools .open-pdf {
-  width: 28px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.7;
-  color: var(--ink);
-  text-decoration: none;
-}
-.reader-tools .open-pdf:hover { opacity: 1; background: var(--hover); }
-
-.reader-tools button {
-  border: 0;
-  background: transparent;
-  width: 28px;
-  height: 24px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink);
-  opacity: 0.7;
-}
-.reader-tools button:hover { opacity: 1; background: var(--hover); }
-.zoom-label {
-  width: auto !important;
-  min-width: 2.8rem;
-  opacity: 0.7 !important;
-  font-variant-numeric: tabular-nums;
-  font-size: 12px;
-}
-.page-readout {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-}
-.page-readout input,
-.findbar-input {
-  width: 2.6rem;
-  height: 22px;
-  text-align: right;
-  border: 1px solid var(--line-toolbar);
-  background: #fff;
-  padding: 0 4px;
-  border-radius: 0;
-}
-.findbar-input {
-  width: 12rem;
-  text-align: left;
-}
-.find-count {
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.paper-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 36vw;
-  font-size: 12px;
-  color: var(--muted);
-  padding: 0 6px;
-}
-.reader-stage {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-}
-.reader-scroll {
-  position: absolute;
-  inset: 0;
-  overflow: auto;
-  background: var(--bg-reader);
-  scrollbar-color: #b8b8b8 #d4d4d7;
-}
-.reader-status {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  color: #3a3a3c;
-  text-align: center;
-  padding: 24px 12px;
-  font-size: 13px;
-  pointer-events: none;
-}
-
 @media (max-width: 720px) {
   .lib-search { width: 100%; max-width: none; flex: 1; }
   .count { display: none; }
   .row { grid-template-columns: 28px minmax(0, 1fr) 56px; }
-  .findbar-input { width: 8rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

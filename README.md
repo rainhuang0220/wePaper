@@ -15,22 +15,20 @@ Zotero on your Mac
 wepaper sync / daemon
       │  HTTPS + bearer token
       ▼
-wePaper server  →  public list  →  continuous PDF.js reader
+wePaper server  →  public list  →  browser-native PDF
 ```
 
 ## Features
 
 - Sync a chosen Zotero collection without writing `zotero.sqlite`
 - Public catalog as a dense list (title, authors, year)
-- Continuous vertical PDF reader over real `application/pdf` bytes
-- First-page-first load with HTTP Range and lazy page render
-- High-DPI canvas, zoom 50–400% with re-render
-- Text selection and in-document find
+- Click a title to open the real PDF in the browser’s native viewer
+- `/paper/:id` redirects to `/paper/:id/pdf`
+- Byte-range PDF transport (`application/pdf`, Range / 206)
 
 ## Screenshots
 
-![Library](docs/screenshots/v11-pass2-library-desktop.png)
-![Reader](docs/screenshots/v11-pass2-reader-desktop.png)
+![Library](docs/screenshots/v14-library-desktop.png)
 
 ## Requirements
 
@@ -94,7 +92,7 @@ cd web && npm run e2e
 
 ## Reader architecture
 
-The server stores real PDF blobs and serves `application/pdf` with byte ranges. The browser loads them with pinned `pdfjs-dist`, renders visible pages to a high-DPI canvas, and overlays a PDF.js text layer. Page 1 is shown before remaining pages are measured or indexed.
+The server stores real PDF blobs and serves them as `application/pdf` with byte ranges. Clicking a paper title navigates to `/paper/:id/pdf`. The browser’s native PDF viewer is the default reading experience. Bookmarked `/paper/:id` URLs redirect there. There is no in-app PDF.js viewer.
 
 ## License
 

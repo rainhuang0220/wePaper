@@ -171,6 +171,36 @@ def test_upload_pdf_and_range(tmp_path: Path) -> None:
     assert alias_range.headers["content-type"].startswith("application/pdf")
 
 
+def test_paper_html_route_redirects_to_native_pdf(tmp_path: Path) -> None:
+    client = make_client(tmp_path)
+    _ingest_paper(client)
+    upload = client.put(
+        "/api/v1/sync/attachments/LCYIEFND",
+        headers={**auth(), "X-Wepaper-Item-Key": "C8TQ6QR5", "X-Wepaper-Filename": "paper.pdf"},
+        files={"file": ("paper.pdf", MINIMAL_PDF, "application/pdf")},
+    )
+    assert upload.status_code in {200, 201}
+
+    redirect = client.get("/paper/C8TQ6QR5", follow_redirects=False)
+    assert redirect.status_code == 302
+    assert redirect.headers["location"].endswith("/paper/C8TQ6QR5/pdf")
+
+    head = client.head("/paper/C8TQ6QR5", follow_redirects=False)
+    assert head.status_code == 302
+    assert head.headers["location"].endswith("/paper/C8TQ6QR5/pdf")
+
+    followed = client.get("/paper/C8TQ6QR5", follow_redirects=True)
+    assert followed.status_code == 200
+    assert followed.headers["content-type"].startswith("application/pdf")
+    assert followed.content.startswith(b"%PDF")
+
+    missing = client.get("/paper/ZZZZZZZZ", follow_redirects=False)
+    assert missing.status_code == 404
+
+    invalid = client.get("/paper/not-a-key", follow_redirects=False)
+    assert invalid.status_code == 404
+
+
 def test_duplicate_upload_is_idempotent(tmp_path: Path) -> None:
     client = make_client(tmp_path)
     _ingest_paper(client)

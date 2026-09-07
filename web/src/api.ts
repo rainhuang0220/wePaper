@@ -25,12 +25,6 @@ export async function fetchPapers(q: string, sort: string): Promise<{ papers: Pa
   return res.json();
 }
 
-export async function fetchPaper(id: string): Promise<Paper> {
-  const res = await fetch(`${apiRoot}/papers/${id}`);
-  if (!res.ok) throw new Error("Paper not found");
-  return res.json();
-}
-
 export function pdfUrl(itemKey: string): string {
   const base = import.meta.env.BASE_URL.endsWith("/")
     ? import.meta.env.BASE_URL

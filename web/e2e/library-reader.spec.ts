@@ -1,52 +1,61 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page, type Response } from "@playwright/test";
 
-test("library search and continuous reader", async ({ page }) => {
+const KEY = "PSELS7ZT";
+const PDF_PATH = `/paper/${KEY}/pdf`;
+const OLD_PATH = `/paper/${KEY}`;
+
+function isPdfResponse(res: Response, key = KEY): boolean {
+  return (
+    res.url().includes(`/paper/${key}/pdf`) &&
+    res.status() < 400 &&
+    (res.headers()["content-type"] || "").includes("application/pdf")
+  );
+}
+
+async function clickOpensPdf(page: Page, row: ReturnType<Page["locator"]>, key = KEY): Promise<Response> {
+  const [response] = await Promise.all([
+    page.waitForResponse((res) => isPdfResponse(res, key), { timeout: 30_000 }),
+    row.click(),
+  ]);
+  return response;
+}
+
+test("library title opens native PDF and old paper URL redirects", async ({ page, request }) => {
   await page.goto("/");
   await expect(page.getByRole("link", { name: "wePaper" })).toBeVisible();
   const first = page.locator("ol.rows a.row").first();
   await expect(first).toBeVisible();
+  await expect(first).toHaveAttribute("href", /\/paper\/[A-Za-z0-9]{8}\/pdf$/);
+  await expect(first).not.toHaveAttribute("target", "_blank");
+
   await page.getByLabel("Search papers").fill("memory");
-  await expect(page.locator("ol.rows a.row").first()).toBeVisible();
+  const target = page.locator(`ol.rows a.row[href$="/paper/${KEY}/pdf"]`);
+  await expect(target).toBeVisible();
 
-  await first.click();
-  await expect(page).toHaveURL(/\/paper\/[A-Za-z0-9]{8}/);
-  await expect(page.getByRole("link", { name: "Library" })).toBeVisible();
-  const openPdf = page.getByRole("link", { name: "Open PDF" });
-  await expect(openPdf).toBeVisible();
-  await expect(openPdf).toHaveAttribute("href", /\/paper\/[A-Za-z0-9]{8}\/pdf$/);
+  const pdfResponse = await clickOpensPdf(page, target, KEY);
+  expect(pdfResponse.url()).toMatch(new RegExp(`/paper/${KEY}/pdf`));
+  expect(pdfResponse.headers()["content-type"] || "").toMatch(/application\/pdf/);
 
-  await expect(page.locator('.reader-scroll[data-first-ready="true"]')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('.page[data-page-number="1"] canvas').first()).toBeVisible({ timeout: 30_000 });
-
-  const fitWidth = await page.locator('.page[data-page-number="1"]').evaluate((el) => el.clientWidth);
-  const viewport = page.viewportSize();
-  if (viewport && viewport.width >= 1100) {
-    await page.setViewportSize({ width: 1100, height: 700 });
-    await expect
-      .poll(async () => page.locator('.page[data-page-number="1"]').evaluate((el) => el.clientWidth), { timeout: 10_000 })
-      .not.toBe(fitWidth);
-    await page.setViewportSize(viewport);
+  if (new URL(page.url()).pathname.endsWith(`/paper/${KEY}/pdf`)) {
+    await page.goBack();
+    await expect(page).toHaveURL(/\/(\?.*)?$/);
+    await expect(page.locator("ol.rows a.row").first()).toBeVisible();
   }
 
-  const pageThree = page.locator('.page[data-page-number="3"]');
-  await pageThree.evaluate((el) => el.scrollIntoView({ block: "start" }));
-  await expect(page.locator(".page-readout input")).not.toHaveValue("1", { timeout: 10_000 });
-  await expect(page.locator('.page[data-page-number="2"]')).toBeVisible();
-  await expect(pageThree).toBeVisible();
+  const direct = await request.get(PDF_PATH);
+  expect(direct.status()).toBe(200);
+  expect(direct.headers()["content-type"] || "").toMatch(/application\/pdf/);
 
-  await page.getByRole("button", { name: "Find in document" }).click();
-  await page.getByPlaceholder("Find").fill("the");
-  await page.getByPlaceholder("Find").press("Enter");
-  await expect(page.locator(".find-count")).not.toHaveText("", { timeout: 15_000 });
+  const ranged = await request.get(PDF_PATH, { headers: { Range: "bytes=0-3" } });
+  expect(ranged.status()).toBe(206);
+  expect(ranged.headers()["content-type"] || "").toMatch(/application\/pdf/);
+  expect(Buffer.from(await ranged.body()).subarray(0, 4).toString("latin1")).toBe("%PDF");
 
-  await page.getByLabel("Zoom in").click();
-  await page.getByRole("link", { name: "Library" }).click();
-  await expect(page).toHaveURL(/\/(\?.*)?$/);
+  const redirected = await request.get(OLD_PATH, { maxRedirects: 0 });
+  expect(redirected.status(), `old URL status ${redirected.status()}`).toBe(302);
+  expect(redirected.headers()["location"] || "").toMatch(new RegExp(`/paper/${KEY}/pdf$`));
 
-  const href = await page.locator("ol.rows a.row").first().getAttribute("href");
-  expect(href).toBeTruthy();
-  await page.goto(href!);
-  await expect(page.locator('.page[data-page-number="1"]')).toBeVisible({ timeout: 30_000 });
-  await page.reload();
-  await expect(page.locator('.page[data-page-number="1"] canvas').first()).toBeVisible({ timeout: 30_000 });
+  const followed = await request.get(OLD_PATH);
+  expect(followed.status()).toBe(200);
+  expect(followed.headers()["content-type"] || "").toMatch(/application\/pdf/);
 });

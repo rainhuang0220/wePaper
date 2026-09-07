@@ -1,8 +1,6 @@
 # wePaper Reader Migration Plan
 
-> **For the implementing agent:** Execute this document task-by-task. Do not reopen architecture. Do not keep the custom `page.render(canvas)` stack. Do not deploy until §20 is green. Use `superpowers:subagent-driven-development` or `executing-plans` only after this plan is the spec.
->
-> **This file is the spec.** Another agent with no prior context must be able to cut over production from this document alone.
+> **Historical (v1.3.0).** Superseded in v1.4.0: the default reading experience is browser-native `/paper/:id/pdf`. The in-app PDF.js viewer was removed. Do not re-implement this plan.
 
 **Goal:** Replace wePaper’s custom PDF.js Display-API renderer with Mozilla’s official viewer layer, inside the existing `/paper/:id` shell, without regressing V1.2 first-page latency or security.
 

@@ -13,7 +13,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -220,6 +220,17 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
     @app.api_route("/paper/{item_key}/pdf", methods=["GET", "HEAD"], response_model=None)
     def public_pdf(item_key: str, request: Request) -> FileResponse | Response:
         return get_pdf(item_key, request)
+
+    @app.api_route("/paper/{item_key}", methods=["GET", "HEAD"])
+    def public_paper(item_key: str) -> RedirectResponse:
+        key = _public_key(item_key)
+        row = conn.execute(
+            "SELECT 1 FROM papers WHERE zotero_item_key = ? AND hidden = 0 AND tombstoned = 0 AND visibility = 'public'",
+            (key,),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="not found")
+        return RedirectResponse(url=f"/paper/{key}/pdf", status_code=302)
 
     @app.put("/api/v1/sync/papers")
     def upsert_paper(body: PaperIn, _: None = Depends(require_sync)) -> dict[str, str]:

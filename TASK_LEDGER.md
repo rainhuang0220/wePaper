@@ -1,55 +1,41 @@
 # TASK_LEDGER
 
-MISSION: wePaper approved reader migration
+MISSION: native PDF default route
 
 - [x] Load execution Skills
-- [x] Read approved reader migration plan
-- [x] Implement PaperViewer / mature viewer
-- [x] Wire /paper/:id to new reader
-- [x] Preserve /paper/:id/pdf
-- [x] Integrate Range loader
-- [x] Preserve first-page-first behavior
-- [x] Preserve persist-after-paint
-- [x] Remove old PdfReader
-- [x] Remove obsolete canvasScale
-- [x] Remove obsolete zoomSteps
-- [x] Remove obsolete pdfWindow/find helpers where plan specifies
-- [x] Remove obsolete tests/mirrors
-- [x] Update reader tests
-- [x] Desktop E2E
-- [x] Mobile E2E
-- [x] 100% fidelity check
-- [x] 200% fidelity check
-- [x] 300% fidelity check
-- [x] 400% fidelity check
-- [x] Text selection check
-- [x] Search check
-- [x] Continuous scroll check
-- [x] Cold-open performance benchmark
+- [x] Audit every paper-opening link
+- [x] Change title links to /paper/:id/pdf
+- [x] Redirect /paper/:id to /paper/:id/pdf
+- [x] Decide fate of optional PDF.js viewer
+- [x] Remove or demote viewer architecture
+- [x] Preserve raw PDF transport
+- [x] Test browser Back
+- [x] Desktop behavior
+- [x] Mobile behavior
+- [x] Direct old URL behavior
+- [x] Update Playwright routing tests
+- [x] Performance regression
 - [x] Security regression
 - [x] Zotero regression
-- [x] Migration reviewer
-- [x] Browser/fidelity reviewer
+- [x] Routing/UX reviewer
 - [x] Fix HIGH/MEDIUM findings
-- [x] Deploy production
-- [x] Public E2E
-- [x] Push GitHub main
-- [x] Create release tag
-- [x] Create GitHub Release
-- [x] Verify production == release commit
-- [x] Final clean git state
+- [ ] Deploy production
+- [ ] Public title-click verification
+- [ ] Public direct-/paper/:id verification
+- [ ] Push main
+- [ ] Create new semantic version tag
+- [ ] Create GitHub Release
+- [ ] Verify production == release commit
+- [ ] Update docs
+- [ ] Final clean git status
 
 ## Notes
 
 - Canonical URL: https://wepaper.plainlist.space
 - Repo: https://github.com/rainhuang0220/wePaper
-- Spec: docs/reader-migration-plan.md
-- Version: v1.3.0
-- Release / production reader commit: d1a563edfc3d87eea670a4de947d0612465f0230
-- Production JS: `/assets/index-Bu5KI4pS.js`
-- Production JS sha256: `6e966ea60288122193c93ef15f95faf9ef92c656d4b3443bafb1cefb77558f09`
-- Public Playwright: 16/16 passed against 175.24.134.228
-- Desktop cold P50 1410 ms / P95 2365 ms
-- Mobile cold P50 1350 ms / P95 2334 ms
-- Warm PAS2TSBP 242 ms
-- Zotero sync --once: 9 discovered, 1 updated, 8 unchanged, exit 0
+- Next version: v1.4.0
+- Decision: PDF.js in-app viewer REMOVED. Default is browser-native `/paper/:id/pdf`.
+- Routing/UX reviewer (c14546ab): PASS, HIGH/MEDIUM none
+- Local pytest: 47 passed
+- Local Playwright: 8/8 passed
+- Local click bench: desktop P50 17 ms / P95 60 ms; mobile P50 17 ms / P95 37 ms (localhost; Playwright treats PDF as download)
