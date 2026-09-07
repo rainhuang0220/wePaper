@@ -50,21 +50,24 @@ MISSION: mobile recovery + status redesign + paper discussions
 - [x] Run visual reviewers
 - [x] Fix HIGH/MEDIUM findings
 - [x] Ensure production contains no test statuses/comments
-- [ ] Deploy final production
-- [ ] Public desktop verification
-- [ ] Public Android/fallback verification
-- [ ] Public comments verification without leaving test junk
-- [ ] Push main
-- [ ] Create tag
-- [ ] Create GitHub Release
-- [ ] Verify production == release commit
-- [ ] Final clean git status
+- [x] Deploy final production
+- [x] Public desktop verification
+- [x] Public Android/fallback verification
+- [x] Public comments verification without leaving test junk
+- [x] Push main
+- [x] Create tag
+- [x] Create GitHub Release
+- [x] Verify production == release commit
+- [x] Final clean git status
 
 ## Notes
 
 - Canonical URL: https://wepaper.plainlist.space
 - Repo: https://github.com/rainhuang0220/wePaper
 - Broken release: v1.5.0 / `4bdc8b47c3f37c4028388323211f1eb9afdbe414`
-- Recovery commit (already on production): `9bc593d368ff39ff8ebfe7c51e36b988c39dc74f`
+- Recovery commit: `9bc593d368ff39ff8ebfe7c51e36b988c39dc74f`
+- Product commit: `3c2bdd310ed851cb512e85a38874db76eca7aab9`
+- Release / production tree: `c85147139e165e76b67ab865d01dfc1d5b56f665`
 - ANDROID_INLINE: NOT ENABLED — RAW PDF FALLBACK
+- Catalog bundle: `/assets/index-DgM47mMh.js` SHA-256 `77f5ecd4149858840894b8357dde344878fca78e48803b16ae2a94dbdf10d493`
 - E2E writes use `/tmp/wepaper-e2e` fixtures (TEST0001/TEST0002), never production papers.
