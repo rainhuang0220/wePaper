@@ -1,7 +1,7 @@
 # v1.6.0 release provenance
 
 **Recovery commit (already on production before this release):** `9bc593d368ff39ff8ebfe7c51e36b988c39dc74f`  
-**This release commit:** fill after tag  
+**This release commit:** `3c2bdd310ed851cb512e85a38874db76eca7aab9`  
 **Production origin:** https://wepaper.plainlist.space (`175.24.134.228`)
 
 `dist/` is gitignored; this file is the provenance record.
