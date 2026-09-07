@@ -33,11 +33,11 @@ MISSION: wePaper approved reader migration
 - [x] Fix HIGH/MEDIUM findings
 - [x] Deploy production
 - [x] Public E2E
-- [ ] Push GitHub main
-- [ ] Create release tag
-- [ ] Create GitHub Release
+- [x] Push GitHub main
+- [x] Create release tag
+- [x] Create GitHub Release
 - [x] Verify production == release commit
-- [ ] Final clean git state
+- [x] Final clean git state
 
 ## Notes
 
@@ -45,10 +45,9 @@ MISSION: wePaper approved reader migration
 - Repo: https://github.com/rainhuang0220/wePaper
 - Spec: docs/reader-migration-plan.md
 - Version: v1.3.0
-- Deployed commit: d1a563edfc3d87eea670a4de947d0612465f0230
+- Release / production reader commit: d1a563edfc3d87eea670a4de947d0612465f0230
 - Production JS: `/assets/index-Bu5KI4pS.js`
 - Production JS sha256: `6e966ea60288122193c93ef15f95faf9ef92c656d4b3443bafb1cefb77558f09`
-- Local dist JS sha256: identical
 - Public Playwright: 16/16 passed against 175.24.134.228
 - Desktop cold P50 1410 ms / P95 2365 ms
 - Mobile cold P50 1350 ms / P95 2334 ms
