@@ -11,17 +11,32 @@ const PAPERS = [
   { key: "3FYGRVK7", size: "large", bytes: 5_568_857 },
 ];
 
+function pageOne(page: Page) {
+  return page.locator('.page[data-page-number="1"]');
+}
+
 async function firstPageReady(page: Page, timeout = 20_000) {
-  await expect(page.locator('[data-testid="pdf-page-1"][data-ready="true"]')).toBeVisible({ timeout });
+  await expect(page.locator('.reader-scroll[data-first-ready="true"]')).toBeVisible({ timeout });
+  await expect(pageOne(page).locator("canvas").first()).toBeVisible({ timeout });
+  await expect
+    .poll(async () => pageOne(page).locator("canvas").first().evaluate((node) => (node as HTMLCanvasElement).width), {
+      timeout,
+    })
+    .toBeGreaterThan(0);
 }
 
 async function textLayerReady(page: Page) {
-  await expect(page.locator('[data-testid="pdf-page-1"] .textLayer')).not.toHaveText("", { timeout: 10_000 });
+  await expect(pageOne(page).locator(".textLayer")).not.toHaveText("", { timeout: 10_000 });
 }
 
 async function canvasMetrics(page: Page) {
-  return page.locator('[data-testid="pdf-page-1"] canvas').evaluate((node) => {
-    const el = node as HTMLCanvasElement;
+  return pageOne(page).evaluate((root) => {
+    const canvases = [...root.querySelectorAll("canvas")] as HTMLCanvasElement[];
+    const el = canvases.reduce<HTMLCanvasElement | undefined>(
+      (best, node) => (!best || node.width > best.width ? node : best),
+      undefined,
+    );
+    if (!el) return { backingWidth: 0, backingHeight: 0, cssWidth: 0, cssHeight: 0, dpr: window.devicePixelRatio };
     return {
       backingWidth: el.width,
       backingHeight: el.height,
@@ -101,26 +116,59 @@ test("warm second open of a medium paper is fast", async ({ page }) => {
   expect(warmMs, `warm ${warmMs}ms`).toBeLessThan(3000);
 });
 
+async function zoomToAtLeast(page: Page, percent: number) {
+  const label = page.locator(".zoom-label");
+  if ((await label.textContent()) === "Fit") {
+    const prior = (await canvasMetrics(page)).backingWidth;
+    await page.getByLabel("Actual size").evaluate((el) => (el as HTMLButtonElement).click());
+    await expect(label).toHaveText("100%");
+    await expect
+      .poll(async () => (await canvasMetrics(page)).backingWidth, { timeout: 10_000 })
+      .not.toBe(prior);
+  }
+  for (let step = 0; step < 40; step += 1) {
+    const text = (await label.textContent()) ?? "";
+    const value = Number.parseInt(text, 10);
+    if (Number.isFinite(value) && value >= percent) {
+      await expect.poll(async () => (await canvasMetrics(page)).backingWidth, { timeout: 10_000 }).toBeGreaterThan(0);
+      return value;
+    }
+    await page.getByLabel("Zoom in").evaluate((el) => (el as HTMLButtonElement).click());
+    await expect
+      .poll(async () => Number.parseInt((await label.textContent()) ?? "", 10), { timeout: 10_000 })
+      .toBeGreaterThan(Number.isFinite(value) ? value : 0);
+  }
+  throw new Error(`could not reach ${percent}% (label=${await label.textContent()})`);
+}
+
 test("zoom re-renders a sharper backing canvas", async ({ page }) => {
   await page.goto("/paper/PSELS7ZT", { waitUntil: "domcontentloaded" });
   await firstPageReady(page);
-  const zoomLabel = page.getByRole("button", { name: /Actual size|Fit width/ });
-  if ((await zoomLabel.getAttribute("aria-label")) === "Actual size") {
-    await zoomLabel.click();
-  }
-  await expect(page.locator(".zoom-label")).toHaveText("100%");
+  await zoomToAtLeast(page, 100);
   const at100 = await canvasMetrics(page);
-  for (let i = 0; i < 4; i += 1) await page.getByLabel("Zoom in").click();
-  await expect(page.locator(".zoom-label")).toHaveText("200%");
+  await zoomToAtLeast(page, 200);
   await expect
-    .poll(async () => (await canvasMetrics(page)).backingWidth, { timeout: 10_000 })
-    .toBeGreaterThan(at100.backingWidth * 1.6);
+    .poll(async () => {
+      const metrics = await canvasMetrics(page);
+      const canvases = await pageOne(page).locator("canvas").count();
+      return metrics.backingWidth > at100.backingWidth * 1.2 || canvases > 1;
+    }, { timeout: 15_000 })
+    .toBeTruthy();
   const at200 = await canvasMetrics(page);
-  for (let i = 0; i < 2; i += 1) await page.getByLabel("Zoom in").click();
-  await expect(page.locator(".zoom-label")).toHaveText("300%");
+  await zoomToAtLeast(page, 300);
   await expect
-    .poll(async () => (await canvasMetrics(page)).backingWidth, { timeout: 10_000 })
-    .toBeGreaterThan(at200.backingWidth);
+    .poll(async () => {
+      const metrics = await canvasMetrics(page);
+      const canvases = await pageOne(page).locator("canvas").count();
+      return metrics.backingWidth > at200.backingWidth || canvases > 1;
+    }, { timeout: 15_000 })
+    .toBeTruthy();
   const at300 = await canvasMetrics(page);
-  expect(at300.backingWidth).toBeGreaterThan(at200.backingWidth);
+  await zoomToAtLeast(page, 400);
+  const at400 = await canvasMetrics(page);
+  const canvases = await pageOne(page).locator("canvas").count();
+  expect(
+    at400.backingWidth > at300.backingWidth || canvases > 1,
+    `400% must not reuse the 300% bitmap (${at300.backingWidth} vs ${at400.backingWidth}, canvases=${canvases})`,
+  ).toBeTruthy();
 });

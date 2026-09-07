@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { fetchPaper, pdfUrl } from "../api";
-import { PdfReader } from "../PdfReader";
+import { PaperViewer } from "../PaperViewer";
 
 function Shell({ message }: { message: string }) {
   return (
@@ -43,7 +43,7 @@ export function PaperPage() {
 
   return (
     <div className="paper-page">
-      <PdfReader url={pdfUrl(id)} />
+      <PaperViewer url={pdfUrl(id)} title={title} />
     </div>
   );
 }
