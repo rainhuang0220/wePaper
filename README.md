@@ -16,6 +16,7 @@ If you already keep papers in Zotero and want a public reading list with the act
 ## Features
 
 - Sync chosen Zotero collections without writing `zotero.sqlite`
+- Automatic near-real-time sync from a login LaunchAgent; open tabs refresh in place
 - Store the real PDFs and serve them with HTTP Range
 - Desktop: click a title to open the browser-native PDF
 - Mobile: tap a title for the same raw PDF (the browser may display it or ask to download)
@@ -37,7 +38,7 @@ flowchart LR
   W --> R[Public readers]
 ```
 
-The agent copies metadata and PDFs from a running Zotero library. Sync writes require `WEPAPER_SYNC_TOKEN`. Public visitors can browse, set reading status, and discuss papers without signing in. That is an intentional small-audience choice for v1.6.
+The background agent copies metadata and PDFs from a running Zotero library. After `wepaper daemon install`, adding a paper to the configured collection is enough: the daemon notices the change in a few seconds, updates the server, and an already-open catalog tab refreshes without F5. Sync writes require `WEPAPER_SYNC_TOKEN`. Public visitors can browse, set reading status, and discuss papers without signing in. That is an intentional small-audience choice for v1.7.
 
 ## Quick start
 
@@ -60,9 +61,12 @@ Open http://127.0.0.1:8788/ — an empty catalog until you sync.
 ```bash
 export WEPAPER_COLLECTION="wePaper"
 export WEPAPER_SERVER_URL=http://127.0.0.1:8788
+export WEPAPER_SYNC_TOKEN=dev-token
 uv run wepaper doctor
-uv run wepaper sync --once
+uv run wepaper daemon install
 ```
+
+After that, keep Zotero running. New or changed items in the configured collection sync automatically. `wepaper sync --once` is only for diagnostics or a one-shot repair.
 
 `WEPAPER_COLLECTION` is a comma-separated list. Every listed collection, including its subcollections, is published.
 
@@ -71,16 +75,18 @@ uv run wepaper sync --once
 1. Use Zotero 7+ (developed against Zotero 10).
 2. Settings → Advanced → **Allow other applications on this computer to communicate with Zotero**.
 3. Put the papers you want public in one or more collections (default name `wePaper`), or set `WEPAPER_COLLECTION`.
-4. Keep Zotero running while the agent syncs.
+4. Keep Zotero running. The LaunchAgent daemon follows the collection while you work.
 
 The agent never writes `zotero.sqlite` and never changes the Zotero library.
 
 | Command | Purpose |
 | --- | --- |
-| `wepaper doctor` | Check Zotero, Local API, collections, and the sync token |
-| `wepaper sync --once` | One full collection reconcile |
-| `wepaper daemon` | Background poll |
-| `wepaper install-agent` | macOS launchd (token stays in `~/.config/wepaper/agent.env`) |
+| `wepaper doctor` | Check Zotero, Local API, collections, daemon, and the server |
+| `wepaper status` | Daemon, Zotero, server, last change / last sync / last error |
+| `wepaper daemon` | Foreground hybrid loop (version poll + reconcile) |
+| `wepaper daemon install` | macOS LaunchAgent (token stays in `~/.config/wepaper/agent.env`) |
+| `wepaper daemon uninstall` | Remove the LaunchAgent |
+| `wepaper sync --once` | One-shot reconcile (diagnostics / repair) |
 | `wepaper serve` | API + built UI |
 
 Details: [docs/sync.md](docs/sync.md).
@@ -153,7 +159,7 @@ Architecture notes: [docs/architecture.md](docs/architecture.md).
 - Likes are not strongly unique across browsers.
 - Every public PDF in the synced collection is world-readable, including publisher copies.
 - The library is selected collections, not a full Zotero replacement.
-- `wepaper install-agent` is macOS launchd only. Linux and Windows can run `wepaper daemon` themselves.
+- `wepaper daemon install` is macOS launchd only. Linux and Windows can run `wepaper daemon` themselves.
 - There is no account system, moderation queue, or notification mail.
 
 ## License

@@ -36,19 +36,38 @@ function appBase(): string {
     : `${import.meta.env.BASE_URL}/`;
 }
 
+export async function fetchLibraryVersion(): Promise<string> {
+  const res = await fetch(`${apiRoot}/library/version`, { credentials: "same-origin" });
+  if (!res.ok) throw new Error("Could not load library version");
+  const body = (await res.json()) as { version: string };
+  return body.version;
+}
+
 export async function fetchPapers(
   q: string,
   sort: string,
   readingStatus = "all",
 ): Promise<{ papers: Paper[]; total: number }> {
-  const params = new URLSearchParams();
-  if (q) params.set("q", q);
-  if (sort) params.set("sort", sort);
-  if (readingStatus && readingStatus !== "all") params.set("reading_status", readingStatus);
-  params.set("limit", "100");
-  const res = await fetch(`${apiRoot}/papers?${params}`, { credentials: "same-origin" });
-  if (!res.ok) throw new Error("Could not load the library");
-  return res.json();
+  const pageSize = 200;
+  const papers: Paper[] = [];
+  let total = 0;
+  let offset = 0;
+  for (;;) {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (sort) params.set("sort", sort);
+    if (readingStatus && readingStatus !== "all") params.set("reading_status", readingStatus);
+    params.set("limit", String(pageSize));
+    params.set("offset", String(offset));
+    const res = await fetch(`${apiRoot}/papers?${params}`, { credentials: "same-origin" });
+    if (!res.ok) throw new Error("Could not load the library");
+    const body = (await res.json()) as { papers: Paper[]; total: number };
+    total = body.total;
+    papers.push(...body.papers);
+    if (papers.length >= total || body.papers.length === 0) break;
+    offset += body.papers.length;
+  }
+  return { papers, total };
 }
 
 export async function fetchPaper(itemKey: string): Promise<Paper> {

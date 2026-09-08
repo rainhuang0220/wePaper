@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { discussionUrl, fetchPapers, paperUrl, patchPaperStatus, type Paper } from "../api";
+import { discussionUrl, fetchLibraryVersion, fetchPapers, paperUrl, patchPaperStatus, type Paper } from "../api";
+import { VERSION_POLL_MS, shouldRefetchCatalog } from "../catalogFreshness";
 import { prefersMobileViewer } from "../device";
 import { FILTERS, type ReadingStatus } from "../readingStatus";
 import { StatusChip } from "../StatusChip";
@@ -48,20 +49,84 @@ export function LibraryPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const filtersRef = useRef({ query, sort, statusFilter });
+  filtersRef.current = { query, sort, statusFilter };
+  const versionRef = useRef<string | null>(null);
+  const catalogGen = useRef(0);
+
+  function applyCatalog(data: { papers: Paper[]; total: number }) {
+    setPapers(data.papers);
+    setTotal(data.total);
+    setError("");
+  }
+
   useEffect(() => {
+    let cancelled = false;
+    const gen = ++catalogGen.current;
     const handle = window.setTimeout(() => {
       setLoading(true);
       fetchPapers(query, sort, statusFilter)
         .then((data) => {
-          setPapers(data.papers);
-          setTotal(data.total);
-          setError("");
+          if (!cancelled && gen === catalogGen.current) applyCatalog(data);
         })
-        .catch((err: Error) => setError(err.message))
-        .finally(() => setLoading(false));
+        .catch((err: Error) => {
+          if (!cancelled && gen === catalogGen.current) setError(err.message);
+        })
+        .finally(() => {
+          if (!cancelled && gen === catalogGen.current) setLoading(false);
+        });
     }, 160);
-    return () => window.clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
   }, [query, sort, statusFilter]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function check(force = false) {
+      try {
+        const next = await fetchLibraryVersion();
+        if (cancelled) return;
+        const previous = versionRef.current;
+        versionRef.current = next;
+        if (!force && !shouldRefetchCatalog(previous, next)) return;
+        if (previous === null && !force) return;
+        const filters = filtersRef.current;
+        const gen = ++catalogGen.current;
+        const data = await fetchPapers(filters.query, filters.sort, filters.statusFilter);
+        const latest = filtersRef.current;
+        if (
+          !cancelled &&
+          gen === catalogGen.current &&
+          latest.query === filters.query &&
+          latest.sort === filters.sort &&
+          latest.statusFilter === filters.statusFilter
+        ) {
+          applyCatalog(data);
+        }
+      } catch {
+        /* keep the last good catalog */
+      }
+    }
+
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void check(false);
+    }, VERSION_POLL_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void check(false);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onVisibility);
+    void check(false);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onVisibility);
+    };
+  }, []);
 
   function updateParams(next: { q?: string; sort?: string; status?: string }) {
     const merged = new URLSearchParams(params);

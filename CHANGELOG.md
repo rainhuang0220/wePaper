@@ -2,6 +2,16 @@
 
 Public releases. Dates and behavior are taken from Git tags and GitHub Releases.
 
+## [1.7.0] — 2026-09-08
+
+Automatic near-real-time Zotero synchronization and live catalog refresh.
+
+- Background daemon polls Zotero `Last-Modified-Version`, debounces writes, then reconciles the configured collection. A 5-minute reconcile plus sleep/wake catch-up covers missed events.
+- Uncaught server/Zotero errors no longer kill the LaunchAgent (that crash loop is why a new paper could sit in Zotero without appearing on the site).
+- `wepaper daemon install|uninstall|status`, `wepaper status`, and `wepaper doctor` show whether automatic sync is alive. Plist has logs and does not embed the sync token.
+- Public `GET /api/v1/library/version`. An already-open catalog tab updates in place within a few seconds, keeping search and filters. Visibility/focus runs an immediate check.
+- `wepaper sync --once` remains for diagnostics and repair. It is not the normal workflow.
+
 ## [1.6.0] — 2026-09-07
 
 Mobile recovery, open reading status, and paper discussions.
@@ -35,6 +45,7 @@ Replaced the custom canvas reader with Mozilla’s official PDF.js viewer.
 
 First-page PDF performance on the earlier in-app reader: ranged fetches, worker preload, and nginx `proxy_cache` off so a cached `206` cannot replace a PDF with a fragment.
 
+[1.7.0]: https://github.com/rainhuang0220/wePaper/releases/tag/v1.7.0
 [1.6.0]: https://github.com/rainhuang0220/wePaper/releases/tag/v1.6.0
 [1.5.0]: https://github.com/rainhuang0220/wePaper/releases/tag/v1.5.0
 [1.4.0]: https://github.com/rainhuang0220/wePaper/releases/tag/v1.4.0

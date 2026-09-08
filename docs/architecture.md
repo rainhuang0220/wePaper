@@ -4,7 +4,7 @@ Personal Zotero collection → local sync agent → public HTTPS paper library.
 
 ## Decision
 
-**Local API read-only daemon + full collection reconcile + authenticated HTTPS ingest.**
+**Local API read-only daemon + version-poll / debounce / periodic reconcile + authenticated HTTPS ingest + public catalog version.**
 
 ```
 Zotero (Local API, usually :23119)

@@ -14,6 +14,7 @@ class FakeZotero:
         self.api_enabled = True
         self.running = True
         self.library_version = 1
+        self.reported_version: int | None = None
         self.server_id = "test-server"
 
     def probe(self) -> Probe:
@@ -22,6 +23,11 @@ class FakeZotero:
         if not self.api_enabled:
             return Probe(True, False, "Local API is not enabled")
         return Probe(True, True, "ok", self.server_id, "3")
+
+    def source_version(self) -> int | None:
+        if self.reported_version is not None:
+            return self.reported_version
+        return self.library_version
 
     def collections(self) -> list[dict]:
         return [{"key": "COL00001", "data": {"name": self.collection_name}}]

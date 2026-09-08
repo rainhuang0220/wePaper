@@ -7,7 +7,7 @@ from urllib.parse import unquote, urlparse
 
 import httpx
 
-from wepaper.checksum import sha256_file
+from wepaper.loop import cached_sha256
 from wepaper.normalize import PaperRecord, is_pdf_attachment, normalize_item
 from wepaper.sync_plan import AttachmentState, PaperState
 
@@ -38,6 +38,7 @@ class ZoteroSource(Protocol):
     def probe(self) -> Probe: ...
     def collections(self) -> list[dict[str, Any]]: ...
     def discover(self, collection_names: list[str]) -> tuple[list[DiscoveredPaper], int, str | None]: ...
+    def source_version(self) -> int | None: ...
 
 
 class LocalAPI:
@@ -52,6 +53,7 @@ class LocalAPI:
             },
             follow_redirects=False,
         )
+        self._digest_cache: dict[tuple[str, int, int], str] = {}
 
     def close(self) -> None:
         self.client.close()
@@ -80,6 +82,19 @@ class LocalAPI:
         if res.status_code >= 400:
             return Probe(True, False, f"Local API returned {res.status_code}", server_id, api_version)
         return Probe(True, True, "Local API ready", server_id, api_version)
+
+    def source_version(self) -> int | None:
+        try:
+            res = self.client.get(f"{self.base_url}/users/0/items", params={"limit": 1})
+        except httpx.HTTPError:
+            return None
+        if res.status_code >= 400:
+            return None
+        raw = res.headers.get("Last-Modified-Version")
+        try:
+            return int(raw) if raw is not None else 0
+        except ValueError:
+            return 0
 
     def collections(self) -> list[dict[str, Any]]:
         res = self.client.get(f"{self.base_url}/users/0/collections")
@@ -125,7 +140,7 @@ class LocalAPI:
                     path_on_disk = self.file_path(child["key"])
                     if path_on_disk is None or not path_on_disk.is_file():
                         continue
-                    digest = sha256_file(path_on_disk)
+                    digest = cached_sha256(path_on_disk, self._digest_cache)
                     attachments.append(
                         AttachmentState(
                             attachment_key=child["key"],

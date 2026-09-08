@@ -16,6 +16,8 @@ def _setup_logging(level: str = "info") -> None:
         level=getattr(logging, level.upper(), logging.INFO),
         format="%(asctime)s %(levelname)s %(name)s %(message)s",
     )
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 @app.callback()
@@ -55,12 +57,44 @@ def sync_cmd(
     raise typer.Exit(run_sync(once=True if once else True))
 
 
-@app.command()
-def daemon() -> None:
+daemon_cli = typer.Typer(help="Run or manage the background sync agent.", no_args_is_help=False)
+
+
+@daemon_cli.callback(invoke_without_command=True)
+def daemon_root(ctx: typer.Context) -> None:
+    if ctx.invoked_subcommand is not None:
+        return
     from wepaper.agent import run_daemon
 
     _setup_logging()
     raise typer.Exit(run_daemon())
+
+
+@daemon_cli.command("install")
+def daemon_install(plist: Optional[str] = None) -> None:
+    from wepaper.launchd import install_launch_agent
+
+    _setup_logging()
+    install_launch_agent(plist)
+
+
+@daemon_cli.command("uninstall")
+def daemon_uninstall() -> None:
+    from wepaper.launchd import uninstall_launch_agent
+
+    _setup_logging()
+    uninstall_launch_agent()
+
+
+@daemon_cli.command("status")
+def daemon_status() -> None:
+    from wepaper.agent import run_status
+
+    _setup_logging()
+    raise typer.Exit(run_status())
+
+
+app.add_typer(daemon_cli, name="daemon")
 
 
 @app.command()
@@ -88,3 +122,11 @@ def install_agent(plist: Optional[str] = None) -> None:
 
     _setup_logging()
     install_launch_agent(plist)
+
+
+@app.command()
+def uninstall_agent() -> None:
+    from wepaper.launchd import uninstall_launch_agent
+
+    _setup_logging()
+    uninstall_launch_agent()

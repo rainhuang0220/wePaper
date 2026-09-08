@@ -18,8 +18,14 @@ class ServerClient:
         return {"Authorization": f"Bearer {self.token}"}
 
     def health(self) -> bool:
-        res = self.client.get(f"{self.base_url}/api/v1/health")
-        return res.status_code == 200 and res.json().get("status") == "ok"
+        try:
+            res = self.client.get(f"{self.base_url}/api/v1/health")
+        except httpx.HTTPError:
+            return False
+        try:
+            return res.status_code == 200 and res.json().get("status") == "ok"
+        except ValueError:
+            return False
 
     def remote_papers(self) -> list[PaperState]:
         res = self.client.get(f"{self.base_url}/api/v1/sync/papers", headers=self._headers())

@@ -54,6 +54,8 @@ def seed_db(data_dir: Path) -> None:
             (f"A{key[1:]}", key, f"{key}.pdf", len(MINIMAL_PDF), checksum, storage, now),
         )
     conn.execute("DELETE FROM paper_comments")
+    conn.execute("DELETE FROM attachments WHERE paper_key NOT IN ('TEST0001', 'TEST0002')")
+    conn.execute("DELETE FROM papers WHERE zotero_item_key NOT IN ('TEST0001', 'TEST0002')")
     conn.execute("UPDATE papers SET reading_status = NULL")
     conn.commit()
     conn.close()

@@ -167,6 +167,10 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
         conn.execute("SELECT 1")
         return {"status": "ok"}
 
+    @app.get("/api/v1/library/version")
+    def library_version() -> dict[str, str]:
+        return {"version": _catalog_version(conn)}
+
     @app.get("/api/v1/papers")
     def list_papers(
         q: str | None = None,
@@ -518,6 +522,10 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
             """,
             (key, paper_key, filename, len(data), checksum, storage_key, utcnow()),
         )
+        conn.execute(
+            "UPDATE papers SET updated_at = ? WHERE zotero_item_key = ?",
+            (utcnow(), paper_key),
+        )
         conn.commit()
         return {"status": "ok", "checksum": checksum, "storage_key": storage_key}
 
@@ -610,6 +618,20 @@ def create_app(overrides: dict[str, str] | None = None) -> FastAPI:
             return FileResponse(index)
 
     return app
+
+
+def _catalog_version(conn: sqlite3.Connection) -> str:
+    row = conn.execute(
+        """
+        SELECT
+          COALESCE((SELECT library_version FROM sync_state WHERE id = 1), 0) AS lib,
+          (SELECT COUNT(*) FROM papers WHERE hidden = 0 AND tombstoned = 0 AND visibility = 'public') AS n,
+          COALESCE((SELECT MAX(updated_at) FROM papers), '') AS papers_updated,
+          COALESCE((SELECT MAX(checksum) FROM attachments), '') AS checksum
+        """
+    ).fetchone()
+    raw = f"{row[0]}:{row[1]}:{row[2]}:{row[3]}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
 def _public_key(key: str) -> str:

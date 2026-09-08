@@ -1,6 +1,6 @@
 # Deployment
 
-Operator guide for the v1.6.0 server. Product pages: [index](README.md).
+Operator guide for the v1.7.0 server. Product pages: [index](README.md).
 
 **Demo origin:** `https://wepaper.plainlist.space`
 
@@ -38,9 +38,15 @@ export WEPAPER_SERVER_URL=https://wepaper.plainlist.space
 export WEPAPER_SYNC_TOKEN=...   # from server .env; never in the plist
 export WEPAPER_COLLECTION="wePaper,Agent Memory"
 uv run wepaper doctor
-uv run wepaper sync --once
-uv run wepaper install-agent
+uv run wepaper daemon install
+uv run wepaper status
 ```
+
+The LaunchAgent starts at login (`RunAtLoad` + `KeepAlive`). Logs: `~/.config/wepaper/logs/`. Token stays in `~/.config/wepaper/agent.env` (mode `0600`).
+
+`wepaper sync --once` is optional after setup — use it only to repair or to prove a one-shot path. Everyday Zotero changes should reach production in a few seconds without that command.
+
+The public catalog polls `GET /api/v1/library/version` and refreshes in place. No extra nginx route is required beyond the existing `/api/` reverse proxy. Keep `proxy_cache` off.
 
 ## Restart
 
@@ -70,6 +76,10 @@ Agent:
 | `WEPAPER_COLLECTION` | Collection names, comma-separated |
 | `WEPAPER_SERVER_URL` | Server origin the agent calls |
 | `WEPAPER_SYNC_TOKEN` | Same bearer as the server |
-| `WEPAPER_POLL_SECONDS` | Daemon interval (default 60) |
+| `WEPAPER_DETECT_SECONDS` | Version poll (default 2) |
+| `WEPAPER_DEBOUNCE_SECONDS` | Quiet period after a Zotero version change (default 2) |
+| `WEPAPER_RECONCILE_SECONDS` | Periodic full reconcile (default 300) |
+| `WEPAPER_RETRY_SECONDS` | Retry when Zotero or the server is down (default 5) |
+| `WEPAPER_PDF_QUIET_SECONDS` | Skip half-written PDFs (default 2; `sync --once` does not wait) |
 | `WEPAPER_STATE_DIR` | Agent cursor + `agent.env` (default `~/.config/wepaper`) |
 | `WEPAPER_ZOTERO_API` | Local API (default `http://127.0.0.1:23119/api`) |
