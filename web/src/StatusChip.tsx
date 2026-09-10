@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState, type SyntheticEvent } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type SyntheticEvent } from "react";
 import { LABELS, STATUSES, type ReadingStatus } from "./readingStatus";
+import { applyStatusMenuPlacement, scrollSelectedStatusIntoMenu } from "./statusMenuPlacement";
 
 type Props = {
   value: ReadingStatus | null;
@@ -9,6 +10,8 @@ type Props = {
 export function StatusChip({ value, onChange }: Props) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   useEffect(() => {
     if (!open) return;
@@ -26,6 +29,31 @@ export function StatusChip({ value, onChange }: Props) {
     };
   }, [open]);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+
+    const place = () => {
+      const menuEl = menuRef.current;
+      const triggerEl = triggerRef.current;
+      if (!menuEl || !triggerEl) return;
+      applyStatusMenuPlacement(menuEl, triggerEl);
+      scrollSelectedStatusIntoMenu(menuEl);
+    };
+
+    place();
+
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    window.visualViewport?.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("scroll", place);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+      window.visualViewport?.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("scroll", place);
+    };
+  }, [open, value]);
+
   function stop(event: SyntheticEvent) {
     event.preventDefault();
     event.stopPropagation();
@@ -35,6 +63,7 @@ export function StatusChip({ value, onChange }: Props) {
     <div className={`status-wrap${open ? " is-open" : ""}`} ref={rootRef}>
       <button
         type="button"
+        ref={triggerRef}
         className={`status-chip ${value ? `is-${value}` : "is-empty"}`}
         data-status={value ?? ""}
         aria-haspopup="menu"
@@ -62,7 +91,7 @@ export function StatusChip({ value, onChange }: Props) {
         />
       ) : null}
       {open ? (
-        <div className="status-menu" id={menuId} role="menu" aria-label="阅读状态">
+        <div className="status-menu" id={menuId} role="menu" aria-label="阅读状态" ref={menuRef}>
           <button
             type="button"
             role="menuitemradio"

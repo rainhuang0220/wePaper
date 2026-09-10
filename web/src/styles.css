@@ -222,15 +222,15 @@ button.status-chip { min-height: 28px; }
   display: none;
 }
 .status-menu {
-  position: absolute;
-  top: calc(100% + 4px);
+  position: fixed;
+  top: 0;
   left: 0;
   right: auto;
   z-index: 8;
   min-width: 8.5rem;
   max-width: min(16rem, calc(100vw - 24px));
-  max-height: min(70vh, 22rem);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   padding: 4px;
   background: #fff;
