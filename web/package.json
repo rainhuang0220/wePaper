@@ -10,6 +10,7 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@floating-ui/react": "^0.27.20",
     "pdfjs-dist": "5.7.284",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

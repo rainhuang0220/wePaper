@@ -108,7 +108,6 @@ button { cursor: pointer; }
   min-height: 64px;
 }
 .row:hover { background: var(--hover); }
-.row:has(.status-menu) { z-index: 6; position: relative; }
 .row-open {
   display: block;
   min-width: 0;
@@ -222,11 +221,8 @@ button.status-chip { min-height: 28px; }
   display: none;
 }
 .status-menu {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: auto;
-  z-index: 8;
+  z-index: 20;
+  width: max-content;
   min-width: 8.5rem;
   max-width: min(16rem, calc(100vw - 24px));
   overflow-x: hidden;
@@ -519,7 +515,7 @@ button.status-chip { min-height: 28px; }
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 7;
+    z-index: 19;
     border: 0;
     background: rgb(20 20 24 / 0.16);
     cursor: default;
